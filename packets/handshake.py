@@ -2,8 +2,9 @@ import base64
 import enum
 import logging
 
+import state
 from packets.packet import NetworkPacket
-from utils import BYTEORDER, BufferReader
+from utils import BYTEORDER, BufferReader, BufferWriter
 
 packet_id = 0
 
@@ -17,7 +18,8 @@ class HandshakeStatus(enum.Enum):
 class Packet(NetworkPacket):
     packet_id = packet_id
 
-    def __init__(self, protocol: int = 12, world: int = 0, item_cache: int = 0, enchantment_cache: int = 0):
+    def __init__(self, protocol: int = 12, world: int = 0x44F, item_cache: int = 9967626288493068445,
+                 enchantment_cache: int = 16519598071320280894):
         self.protocol = protocol
         self.world = world
         self.item_cache = item_cache
@@ -27,10 +29,14 @@ class Packet(NetworkPacket):
         return self.serialize()
 
     def serialize(self):
-        return (self.protocol.to_bytes(2, BYTEORDER)
-                + self.world.to_bytes(4, BYTEORDER)
-                + self.item_cache.to_bytes(8, BYTEORDER)
-                + self.enchantment_cache.to_bytes(8, BYTEORDER))
+        writer = BufferWriter()
+
+        writer.write_int16(self.protocol)
+        writer.write_int32(self.world)
+        writer.write_int64(self.item_cache)
+        writer.write_int64(self.enchantment_cache)
+
+        return bytes(writer)
 
 
 class Response(NetworkPacket):
@@ -50,6 +56,9 @@ def handle(packet: Response):
         exit(1)
 
     logging.info(f"Handshake accepted, {packet.player_count} players online. Latest news:\n{packet.latest_news}")
+    logging.debug(f"Encryption key: {packet.encryption_key}")
+    state.encryption_key = packet.encryption_key
+    state.handshake_established = True
 
 
 receive_packet = Response

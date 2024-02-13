@@ -2,15 +2,23 @@ import multiplayer
 import asyncio
 import logging
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", datefmt='%Y-%m-%d %H:%M:%S')
+import secrets
+import state
+
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(message)s", datefmt='%Y-%m-%d %H:%M:%S')
 
 
 async def main():
     client = multiplayer.Client()
+
+    asyncio.create_task(client.update())
     await client.connect()
 
-    while True:
-        await client.update()
+    await asyncio.sleep(1)
+
+    await client.login(secrets.USERNAME, secrets.PASSWORD)
+
+    while not state.logged_in:
         await asyncio.sleep(0.1)
 
 

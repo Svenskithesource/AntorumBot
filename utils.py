@@ -1,16 +1,18 @@
+import base64
 from typing import Literal
 
-import rsa
+from Cryptodome.PublicKey import RSA
+from Cryptodome.Cipher import PKCS1_v1_5
 
 BYTEORDER: Literal['little', 'big'] = "big"
 
 
 class EncryptionHelper:
     def __init__(self, key):
-        self.key = key
+        self.key = RSA.import_key(key)
 
     def encrypt(self, data):
-        return rsa.encrypt(data, self.key)
+        return base64.b64encode(PKCS1_v1_5.new(self.key.public_key()).encrypt(data))
 
 
 class BufferReader:
@@ -38,3 +40,34 @@ class BufferReader:
     def read_string(self):
         length = self.read_int64()
         return self.read(length).decode("utf-8")
+
+
+class BufferWriter:
+    def __init__(self):
+        self.data = b""
+
+    def __bytes__(self):
+        return self.data
+
+    def write(self, data: bytes):
+        self.data += data
+
+    def write_int8(self, value: int):
+        self.write(value.to_bytes(1, BYTEORDER))
+
+    def write_int16(self, value: int):
+        self.write(value.to_bytes(2, BYTEORDER))
+
+    def write_int32(self, value: int):
+        self.write(value.to_bytes(4, BYTEORDER))
+
+    def write_int64(self, value: int):
+        self.write(value.to_bytes(8, BYTEORDER))
+
+    def write_string(self, value: str):
+        self.write_int64(len(value))
+        self.write(value.encode("utf-8"))
+
+    def write_bytes(self, value: bytes):
+        self.write_int64(len(value))
+        self.write(value)

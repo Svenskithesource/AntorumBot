@@ -1,7 +1,12 @@
 import asyncio
+import base64
+
 import packets
 import logging
-from utils import BYTEORDER
+
+import utils
+from utils import BYTEORDER, BufferWriter
+import state
 
 
 class Client:
@@ -23,10 +28,29 @@ class Client:
         logging.info("Sending handshake")
         self.send_queue.put_nowait(packets.Handshake())
 
+    async def login(self, username: str, password: str):
+        if state.logged_in:
+            logging.warning("Already logged in")
+            return
+
+        while not state.handshake_established:
+            await asyncio.sleep(0.1)
+
+        logging.info(f"Logging in as {username}")
+        self.send_queue.put_nowait(
+            packets.Login(username, utils.EncryptionHelper(state.encryption_key).encrypt(password.encode("utf-8"))))
+
     async def send(self, data: packets.NetworkPacket):
         serialized = data.serialize()
-        to_send = len(serialized).to_bytes(2, BYTEORDER) + data.packet_id.to_bytes(1, BYTEORDER) + serialized
-        self.writer.write(to_send)
+        writer = BufferWriter()
+
+        writer.write_int16(len(serialized))
+        writer.write_int8(data.packet_id)
+        writer.write(serialized)
+
+        self.writer.write(bytes(writer))
+
+        logging.debug(f"Serialized data: {'-'.join(hex(n)[2:].zfill(2) for n in bytes(writer))}")
         await self.writer.drain()
 
     async def recv_loop(self):
@@ -46,16 +70,21 @@ class Client:
             self.recv_queue.put_nowait((packet_id, data))
 
     async def update(self):
-        while self.recv_queue.qsize() > 0:
-            packet_id, data = await self.recv_queue.get()
+        while True:
+            await asyncio.sleep(0.1)
+            while self.recv_queue.qsize() > 0:
+                packet_id, data = await self.recv_queue.get()
 
-            logging.debug(f"Received packet {packet_id} with data {data}")
+                logging.debug(f"Received packet {packet_id} with data {data}")
 
-            handler = packets.get_handler(packet_id)
+                handler = packets.get_handler(packet_id)
 
-            if handler:
-                handler(data)
+                if handler:
+                    handler(data)
 
-        while self.send_queue.qsize() > 0:
-            data = await self.send_queue.get()
-            await self.send(data)
+            while self.send_queue.qsize() > 0:
+                data = await self.send_queue.get()
+
+                logging.debug(f"Sending packet {data.packet_id} with data {data}")
+
+                await self.send(data)
