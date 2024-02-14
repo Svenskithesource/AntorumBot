@@ -47,6 +47,7 @@ class Response(NetworkPacket):
 def handle(packet: Response, client: "multiplayer.Client"):
     if packet.status == LoginStatus.SUCCESS or packet.status == LoginStatus.SUCCESS_NEW_USER:
         logging.info(f"Logged in as player {packet.player_id}")
+        client.player_id = packet.player_id
         client.logged_in = True
 
         if packet.status == LoginStatus.SUCCESS_NEW_USER:

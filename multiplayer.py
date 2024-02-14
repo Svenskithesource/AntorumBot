@@ -20,6 +20,7 @@ class Client:
         self.handshake_established = False
         self.logged_in = False
         self.encryption_key = ""
+        self.player_id = -1
 
     async def connect(self):
         logging.info(f"Connecting to {self.host}:{self.port}")
@@ -42,6 +43,15 @@ class Client:
         logging.info(f"Logging in as {username}")
         self.send_queue.put_nowait(
             packets.Login(username, utils.EncryptionHelper(self.encryption_key).encrypt(password.encode("utf-8"))))
+
+    async def load_game(self):
+        if not self.logged_in:
+            logging.error("Not logged in")
+            return
+
+        logging.info("Loading game")
+        self.send_queue.put_nowait(packets.LoadComplete())
+        logging.info("Game loaded!")
 
     async def send(self, data: packets.NetworkPacket):
         serialized = data.serialize()

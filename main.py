@@ -4,7 +4,7 @@ import logging
 
 import secrets
 
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(message)s", datefmt='%Y-%m-%d %H:%M:%S')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", datefmt='%Y-%m-%d %H:%M:%S')
 
 
 async def main():
@@ -16,6 +16,11 @@ async def main():
     await asyncio.sleep(1)
 
     await client.login(secrets.USERNAME, secrets.PASSWORD)
+
+    while not client.logged_in:
+        await asyncio.sleep(0.1)
+
+    await client.load_game()
 
     while True:
         await asyncio.sleep(0.1)

@@ -1,5 +1,6 @@
 import base64
 from typing import Literal
+import struct
 
 from Cryptodome.PublicKey import RSA
 from Cryptodome.Cipher import PKCS1_v1_5
@@ -20,26 +21,32 @@ class BufferReader:
         self.data = data
         self.pointer = 0
 
-    def read(self, size: int):
+    def read(self, size: int) -> bytes:
         data = self.data[self.pointer:self.pointer + size]
         self.pointer += size
         return data
 
-    def read_int8(self, signed: bool = False):
+    def read_bool(self) -> bool:
+        return bool(self.read_int8())
+
+    def read_int8(self, signed: bool = False) -> int:
         return int.from_bytes(self.read(1), BYTEORDER, signed=signed)
 
-    def read_int16(self, signed: bool = False):
+    def read_int16(self, signed: bool = False) -> int:
         return int.from_bytes(self.read(2), BYTEORDER, signed=signed)
 
-    def read_int32(self, signed: bool = False):
+    def read_int32(self, signed: bool = False) -> int:
         return int.from_bytes(self.read(4), BYTEORDER, signed=signed)
 
-    def read_int64(self, signed: bool = False):
+    def read_int64(self, signed: bool = False) -> int:
         return int.from_bytes(self.read(8), BYTEORDER, signed=signed)
 
-    def read_string(self):
+    def read_string(self) -> str:
         length = self.read_int64()
         return self.read(length).decode("utf-8")
+
+    def read_float(self) -> float:
+        return struct.unpack((">" if BYTEORDER == "big" else "<") + "f", self.read(4))[0]
 
 
 class BufferWriter:

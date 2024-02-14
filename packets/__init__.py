@@ -4,6 +4,7 @@ from pathlib import Path
 from packets.handshake import Packet as Handshake
 from packets.login import Packet as Login
 from packets.packet import NetworkPacket
+from packets.load_complete import Request as LoadComplete
 
 handlers = {}
 
