@@ -2,7 +2,6 @@ import base64
 import enum
 import logging
 
-import state
 from packets.packet import NetworkPacket
 from utils import BYTEORDER, BufferReader, BufferWriter
 
@@ -50,15 +49,15 @@ class Response(NetworkPacket):
         self.latest_news = reader.read_string()
 
 
-def handle(packet: Response):
+def handle(packet: Response, client: "multiplayer.Client"):
     if packet.status == HandshakeStatus.REJECTED:
         logging.error("Handshake rejected")
         exit(1)
 
     logging.info(f"Handshake accepted, {packet.player_count} players online. Latest news:\n{packet.latest_news}")
     logging.debug(f"Encryption key: {packet.encryption_key}")
-    state.encryption_key = packet.encryption_key
-    state.handshake_established = True
+    client.encryption_key = packet.encryption_key
+    client.handshake_established = True
 
 
 receive_packet = Response

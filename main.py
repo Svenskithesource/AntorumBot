@@ -3,7 +3,6 @@ import asyncio
 import logging
 
 import secrets
-import state
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(message)s", datefmt='%Y-%m-%d %H:%M:%S')
 
@@ -18,7 +17,7 @@ async def main():
 
     await client.login(secrets.USERNAME, secrets.PASSWORD)
 
-    while not state.logged_in:
+    while True:
         await asyncio.sleep(0.1)
 
 

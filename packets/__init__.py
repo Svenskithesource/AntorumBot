@@ -21,5 +21,5 @@ def get_handler(packet_id: int):
     if module is None:
         return None
 
-    handler = lambda data: module.handle(module.receive_packet(data))
+    handler = lambda data, client: module.handle(module.receive_packet(data), client)
     return handler

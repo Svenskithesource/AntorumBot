@@ -6,7 +6,6 @@ import logging
 
 import utils
 from utils import BYTEORDER, BufferWriter
-import state
 
 
 class Client:
@@ -17,6 +16,10 @@ class Client:
         self.writer: asyncio.StreamWriter = None
         self.send_queue = asyncio.Queue()
         self.recv_queue = asyncio.Queue()
+
+        self.handshake_established = False
+        self.logged_in = False
+        self.encryption_key = ""
 
     async def connect(self):
         logging.info(f"Connecting to {self.host}:{self.port}")
@@ -29,16 +32,16 @@ class Client:
         self.send_queue.put_nowait(packets.Handshake())
 
     async def login(self, username: str, password: str):
-        if state.logged_in:
+        if self.logged_in:
             logging.warning("Already logged in")
             return
 
-        while not state.handshake_established:
+        while not self.handshake_established:
             await asyncio.sleep(0.1)
 
         logging.info(f"Logging in as {username}")
         self.send_queue.put_nowait(
-            packets.Login(username, utils.EncryptionHelper(state.encryption_key).encrypt(password.encode("utf-8"))))
+            packets.Login(username, utils.EncryptionHelper(self.encryption_key).encrypt(password.encode("utf-8"))))
 
     async def send(self, data: packets.NetworkPacket):
         serialized = data.serialize()
@@ -80,7 +83,7 @@ class Client:
                 handler = packets.get_handler(packet_id)
 
                 if handler:
-                    handler(data)
+                    handler(data, self)
 
             while self.send_queue.qsize() > 0:
                 data = await self.send_queue.get()
