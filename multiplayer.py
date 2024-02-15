@@ -1,10 +1,9 @@
 import asyncio
-import base64
-
 import packets
 import logging
 
 import utils
+from game import Game
 from utils import BYTEORDER, BufferWriter
 
 
@@ -21,6 +20,8 @@ class Client:
         self.logged_in = False
         self.encryption_key = ""
         self.player_id = -1
+
+        self.game: Game = None
 
     async def connect(self):
         logging.info(f"Connecting to {self.host}:{self.port}")

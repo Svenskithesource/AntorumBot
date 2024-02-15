@@ -1,5 +1,5 @@
 import base64
-from typing import Literal
+from typing import Literal, List
 import struct
 
 from Cryptodome.PublicKey import RSA
@@ -78,3 +78,10 @@ class BufferWriter:
     def write_bytes(self, value: bytes):
         self.write_int64(len(value))
         self.write(value)
+
+
+def get_entity_from_player_id(player_id: int, entities: List["world_entities.Entity"]):
+    for entity in entities:
+        if entity.states.get(6) and entity.states[6].state.player_id == player_id:
+            return entity
+    return None
