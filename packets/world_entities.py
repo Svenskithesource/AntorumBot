@@ -214,8 +214,8 @@ class Response(NetworkPacket):
         self.full_sync = reader.read_bool()
 
 
-def update_player(entity: Entity, client: "multiplayer.Client"):
-    for state in entity.states.values():
+def update_player(states: Dict[int, EntityState], client: "multiplayer.Client"):
+    for state in states.values():
         if state.state_id == 0:
             client.game.local_player.username = state.state.name
         if state.state_id == 1:
@@ -225,14 +225,13 @@ def update_player(entity: Entity, client: "multiplayer.Client"):
             client.game.local_player.max_health = state.state.max_health
 
 
-def update_entity(entity: Entity, client: "multiplayer.Client"):
-    if client.game.entities.get(entity.network_id):
-        for state in entity.states.values():
-            client.game.entities[entity.network_id].states[state.state_id] = state
-    else:
-        client.game.entities[entity.network_id] = entity
+def update_entity(network_id: int, states: Dict[int, EntityState], client: "multiplayer.Client"):
+    if client.game.entities.get(network_id):
+        for state in states.values():
+            client.game.entities[network_id].states[state.state_id] = state
 
-    update_player(entity, client)
+    if network_id == client.game.local_player.network_id:
+        update_player(states, client)
 
 
 def update_entities(entities: List[Entity], is_full_sync: bool, removed_entities: List[int],
@@ -244,9 +243,10 @@ def update_entities(entities: List[Entity], is_full_sync: bool, removed_entities
         client.game.entities = {entity.network_id: entity for entity in entities}
     else:
         for entity in entities:
-            update_entity(entity, client)
-
-            client.game.entities[entity.network_id] = entity
+            if not client.game.entities.get(entity.network_id):
+                client.game.entities[entity.network_id] = entity
+            else:
+                update_entity(entity.network_id, entity.states, client)
 
 
 def handle(packet: Response, client: "multiplayer.Client"):
@@ -254,9 +254,8 @@ def handle(packet: Response, client: "multiplayer.Client"):
         player_entity = get_entity_from_player_id(client.player_id, packet.entities)
         network_id = player_entity.network_id
 
-        client.game = Game(client.player_id, network_id)
-        client.game.local_player = Player(client.player_id, network_id)
-        update_player(player_entity, client)
+        client.game = Game(client.player_id, network_id, client)
+        update_player(player_entity.states, client)
 
     logging.debug(f"Received {len(packet.entities)} entities, at coords {packet.coords}")
     logging.debug(f"Removed {len(packet.removed_entities)} entities")

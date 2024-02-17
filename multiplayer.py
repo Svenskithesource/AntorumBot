@@ -52,7 +52,13 @@ class Client:
 
         logging.info("Loading game")
         self.send_queue.put_nowait(packets.LoadComplete())
+        await asyncio.sleep(0.5)
+        self.send_queue.put_nowait(packets.LoadComplete())  # Server needs two of these for some reason
         logging.info("Game loaded!")
+
+    async def move(self, x: float, y: float):
+        logging.info(f"Moving to {x}, {y}")
+        self.send_queue.put_nowait(packets.Move(x, y))
 
     async def send(self, data: packets.NetworkPacket):
         serialized = data.serialize()

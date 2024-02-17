@@ -22,11 +22,15 @@ async def main():
 
     await client.load_game()
 
+    await asyncio.sleep(5)
+    # await client.move(70, 390)
+    await client.move(50, 360)
+
     while True:
-        await asyncio.sleep(5)
         logging.info(f"Player {client.game.local_player}")
         logging.info(f"Player stats: {client.game.local_player.stats}")
         logging.info(f"Player inventory: {client.game.local_player.inventory}")
+        await asyncio.sleep(5)
 
 
 asyncio.run(main())  # Execute within the asyncio event loop

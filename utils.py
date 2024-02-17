@@ -71,6 +71,9 @@ class BufferWriter:
     def write_int64(self, value: int):
         self.write(value.to_bytes(8, BYTEORDER))
 
+    def write_float(self, value: float):
+        self.write(struct.pack((">" if BYTEORDER == "big" else "<") + "f", value))
+
     def write_string(self, value: str):
         self.write_int64(len(value))
         self.write(value.encode("utf-8"))

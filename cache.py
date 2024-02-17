@@ -15,7 +15,7 @@ def get_resources():
         resource_id = reader.read_int64()
         item_resource = ItemResource(reader)
         resources[resource_id] = item_resource
-        
+
     return resources
 
 
