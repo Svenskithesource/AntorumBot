@@ -34,8 +34,7 @@ class Skill:
 class Player:
     def __init__(self, player_id: int, network_id: int, skills: List[Skill] = None, health: int = 30,
                  max_health: int = 30, username: str = "Unknown", position: Tuple[float, float] = (-1, -1),
-                 stats: Dict[Stat, int] = None, inventory: List[Tuple[ItemSlot, InventoryItem]] = None,
-                 client: "multiplayer.Client" = None):
+                 stats: Dict[Stat, int] = None, inventory: List[Tuple[ItemSlot, InventoryItem]] = None):
         if inventory is None:
             inventory = {}
 
@@ -53,10 +52,6 @@ class Player:
         self.position = position
         self.inventory = inventory
         self.username = username
-        self.client = client
-
-    async def move(self, x: float, y: float):
-        await self.client.move(x, y)
 
     def __str__(self):
         return f"{self.username} ({self.health}/{self.max_health}) at {self.position}"

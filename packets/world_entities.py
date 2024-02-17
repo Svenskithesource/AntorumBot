@@ -183,6 +183,9 @@ class EntityState:
             logging.error(f"Unknown state id {self.state_id}")
             self.state = None
 
+    def __repr__(self):
+        return f"EntityState({self.state_id}, {self.state})"
+
 
 class Entity:
     def __init__(self, reader: BufferReader):
@@ -194,6 +197,9 @@ class Entity:
         for i in range(amount):
             state = EntityState(reader)
             self.states[state.state_id] = state
+
+    def __repr__(self):
+        return f"Entity({self.network_id}, {self.states})"
 
 
 class Response(NetworkPacket):
@@ -240,7 +246,11 @@ def update_entities(entities: List[Entity], is_full_sync: bool, removed_entities
         client.game.entities.pop(network_id, None)
 
     if is_full_sync:
+        client.game.entities.clear()
         client.game.entities = {entity.network_id: entity for entity in entities}
+
+        player_entity = client.game.entities[client.game.local_player.network_id]
+        update_player(player_entity.states, client)
     else:
         for entity in entities:
             if not client.game.entities.get(entity.network_id):
@@ -255,7 +265,6 @@ def handle(packet: Response, client: "multiplayer.Client"):
         network_id = player_entity.network_id
 
         client.game = Game(client.player_id, network_id, client)
-        update_player(player_entity.states, client)
 
     logging.debug(f"Received {len(packet.entities)} entities, at coords {packet.coords}")
     logging.debug(f"Removed {len(packet.removed_entities)} entities")

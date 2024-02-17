@@ -1,7 +1,7 @@
 import logging
 
 from packets import NetworkPacket
-from packets.world_entities import update_entity, TransformState, EntityState
+from packets.world_entities import update_entity, MovementState, EntityState
 from utils import BufferWriter, BufferReader
 
 packet_id = 4
@@ -35,16 +35,15 @@ class Response(NetworkPacket):
 
 
 def handle(packet: Response, client: "multiplayer.Client"):
-    end_pos = packet.moves[-1]
-    #
-    # entity = client.game.entities[packet.network_id]
-    # logging.debug(f"Moving entity {packet.network_id} to {end_pos}")
-    #
-    # fake_entity_state = EntityState.__new__(EntityState)  # TODO: This is a hack, fix it
-    # fake_entity_state.state_id = 1
-    # fake_entity_state.state = TransformState(end_pos, entity.states[1].rotation, entity.states[1].scale)
-    #
-    # update_entity(packet.network_id, {1: fake_entity_state}, client)
+    entity = client.game.entities[packet.network_id]
+    logging.debug(f"Moving entity {packet.network_id}")
+
+    fake_entity_state = EntityState.__new__(EntityState)  # TODO: This is a hack, fix it
+    fake_entity_state.state_id = 2
+    fake_entity_state.state = MovementState(packet.moves, entity.states[2].state.is_moving,
+                                            entity.states[2].state.speed)
+
+    update_entity(packet.network_id, {2: fake_entity_state}, client)
 
 
 receive_packet = Response

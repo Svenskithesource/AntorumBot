@@ -1,4 +1,5 @@
 import asyncio
+
 import packets
 import logging
 
@@ -20,6 +21,8 @@ class Client:
         self.logged_in = False
         self.encryption_key = ""
         self.player_id = -1
+
+        self.is_following = False
 
         self.game: Game = None
 
@@ -52,13 +55,46 @@ class Client:
 
         logging.info("Loading game")
         self.send_queue.put_nowait(packets.LoadComplete())
-        await asyncio.sleep(0.5)
+        while not self.game or not self.game.entities:
+            await asyncio.sleep(0.01)
         self.send_queue.put_nowait(packets.LoadComplete())  # Server needs two of these for some reason
         logging.info("Game loaded!")
 
     async def move(self, x: float, y: float):
         logging.info(f"Moving to {x}, {y}")
         self.send_queue.put_nowait(packets.Move(x, y))
+
+    async def follow(self, network_id: int):
+        logging.debug(f"Following entity {network_id}")
+        self.is_following = True
+        original_position = utils.get_future_position_from_entity(network_id, self.game)
+
+        if original_position != self.game.local_player.position:
+            await self.move(*original_position)
+
+        while True:
+            if not self.is_following:
+                break
+
+            if original_position != utils.get_future_position_from_entity(network_id, self.game):
+                original_position = utils.get_future_position_from_entity(network_id, self.game)
+                await self.move(original_position[0], original_position[1])
+
+            await asyncio.sleep(0.01)
+
+    async def follow_player(self, username: str):
+        logging.info(f"Following player {username}")
+        network_id = utils.get_entity_from_player_id(utils.get_player_id_from_username(username, self.game),
+                                                     self.game.entities).network_id
+
+        if network_id:
+            await self.follow(network_id)
+        else:
+            logging.error(f"Player {username} not found")
+
+    async def stop_following(self):
+        logging.info("Stopping follow")
+        self.is_following = False
 
     async def send(self, data: packets.NetworkPacket):
         serialized = data.serialize()
@@ -87,11 +123,13 @@ class Client:
             while len(data) < packet_size:
                 data += await self.reader.read(packet_size - len(data))
 
+            logging.debug("Received packet, adding to queue")
+
             self.recv_queue.put_nowait((packet_id, data))
 
     async def update(self):
         while True:
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.01)
             while self.recv_queue.qsize() > 0:
                 packet_id, data = await self.recv_queue.get()
 

@@ -88,3 +88,15 @@ def get_entity_from_player_id(player_id: int, entities: List["world_entities.Ent
         if entity.states.get(6) and entity.states[6].state.player_id == player_id:
             return entity
     return None
+
+
+def get_future_position_from_entity(network_id, game: "multiplayer.Game"):
+    return game.entities[network_id].states[2].state.destinations[-1] if game.entities[network_id].states[
+        2].state.destinations else game.entities[network_id].states[1].state.position
+
+
+def get_player_id_from_username(username: str, game: "multiplayer.Game"):
+    for entity in game.entities.values():
+        if entity.states.get(6) and entity.states[0].state.name == username:
+            return entity.states[6].state.player_id
+    return None
