@@ -4,7 +4,9 @@ import logging
 
 import secrets
 
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(message)s", datefmt='%Y-%m-%d %H:%M:%S')
+import actions
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", datefmt='%Y-%m-%d %H:%M:%S')
 
 
 async def main():
@@ -21,16 +23,18 @@ async def main():
     await client.load_game()
 
     await asyncio.sleep(2)
-    # await client.move(70, 390)
+    forage = actions.ForageWeeds(client)
+    await forage.run()
+    # await client.move(43, 247)
     # await client.move(50, 360)
-    asyncio.create_task(client.follow_player("svenskithesource"))
+    # asyncio.create_task(client.follow_player("svenskithesource"))
     # await client.move(240, 601)
 
-    while True:
-        logging.info(f"Player {client.game.local_player}")
-        # logging.info(f"Player stats: {client.game.local_player.stats}")
-        # logging.info(f"Player inventory: {client.game.local_player.inventory}")
-        await asyncio.sleep(5)
+    # while True:
+    #     logging.info(f"Player {client.game.local_player}")
+    #     # logging.info(f"Player stats: {client.game.local_player.stats}")
+    #     # logging.info(f"Player inventory: {client.game.local_player.inventory}")
+    #     await asyncio.sleep(5)
 
 
 asyncio.run(main())  # Execute within the asyncio event loop

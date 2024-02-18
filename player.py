@@ -2,7 +2,7 @@ import enum
 from dataclasses import dataclass
 from typing import List, Tuple, Dict, TYPE_CHECKING
 
-from packets.inventory import ItemSlot, InventoryItem
+from packets.inventory_add import InventoryItem
 from packets.stats import Stat
 
 if TYPE_CHECKING:
@@ -34,7 +34,7 @@ class Skill:
 class Player:
     def __init__(self, player_id: int, network_id: int, skills: List[Skill] = None, health: int = 30,
                  max_health: int = 30, username: str = "Unknown", position: Tuple[float, float] = (-1, -1),
-                 stats: Dict[Stat, int] = None, inventory: List[Tuple[ItemSlot, InventoryItem]] = None):
+                 stats: Dict[Stat, int] = None, inventory: Dict[int, InventoryItem] = None):
         if inventory is None:
             inventory = {}
 

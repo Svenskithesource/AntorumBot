@@ -1,11 +1,33 @@
 import base64
-from typing import Literal, List
+import enum
+from typing import Literal, List, TYPE_CHECKING, Dict
 import struct
+
+if TYPE_CHECKING:
+    import multiplayer
+    from packets.inventory import InventoryItem
 
 from Cryptodome.PublicKey import RSA
 from Cryptodome.Cipher import PKCS1_v1_5
 
 BYTEORDER: Literal['little', 'big'] = "big"
+
+
+class StateType(enum.Enum):
+    INFO = 0
+    TRANSFORM = 1
+    MOVEMENT = 2
+    HEALTH = 3
+    ITEM = 4
+    INTERACTABLE = 5
+    PLAYER = 6
+    EQUIPMENT = 7
+    NPC = 8
+    FISHER = 9
+    CLASS = 10
+    QUEST_GIVER = 11
+    MINER = 12
+    ANIMATOR = 13
 
 
 class EncryptionHelper:
@@ -85,18 +107,26 @@ class BufferWriter:
 
 def get_entity_from_player_id(player_id: int, entities: List["world_entities.Entity"]):
     for entity in entities:
-        if entity.states.get(6) and entity.states[6].state.player_id == player_id:
+        if entity.states.get(StateType.PLAYER) and entity.states[StateType.PLAYER].state.player_id == player_id:
             return entity
     return None
 
 
 def get_future_position_from_entity(network_id, game: "multiplayer.Game"):
-    return game.entities[network_id].states[2].state.destinations[-1] if game.entities[network_id].states[
-        2].state.destinations else game.entities[network_id].states[1].state.position
+    return game.entities[network_id].states[StateType.MOVEMENT].state.destinations[-1] \
+        if game.entities[network_id].states[StateType.MOVEMENT].state.destinations \
+        else game.entities[network_id].states[StateType.TRANSFORM].state.position
 
 
 def get_player_id_from_username(username: str, game: "multiplayer.Game"):
     for entity in game.entities.values():
-        if entity.states.get(6) and entity.states[0].state.name == username:
-            return entity.states[6].state.player_id
+        if entity.states.get(StateType.INFO) and entity.states[StateType.INFO].state.name == username:
+            return entity.states[StateType.PLAYER].state.player_id
     return None
+
+
+def get_inventory_diff(old_inventory: Dict[int, "InventoryItem"], new_inventory: Dict[int, "InventoryItem"]):
+    old_inventory = set(old_inventory.values())
+    new_inventory = set(new_inventory.values())
+
+    return old_inventory - new_inventory

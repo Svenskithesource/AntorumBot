@@ -1,6 +1,6 @@
 from typing import Dict, TYPE_CHECKING
 
-from packets.inventory import ItemResource
+from packets.inventory_add import ItemResource
 
 if TYPE_CHECKING:
     from packets.world_entities import Entity

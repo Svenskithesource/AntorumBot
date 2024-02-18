@@ -1,15 +1,16 @@
 import enum
-import json
 import logging
 from dataclasses import dataclass
 from typing import Tuple, List, Dict
 
 from game import Game
 from packets import NetworkPacket
-from packets.inventory import ItemSlot, InventoryItem, ItemPropertyBag
+from packets.inventory import InventoryItem
 from packets.inventory import Response as InventoryResponse
-from player import Player
-from utils import BufferReader, get_entity_from_player_id
+
+from packets.item import ItemSlot
+
+from utils import BufferReader, get_entity_from_player_id, StateType
 
 packet_id = 29
 
@@ -126,6 +127,9 @@ class AnimatorState:
 
 
 class EntityState:
+    state: InfoState | TransformState | MovementState | HealthState | ItemState | InteractableState | PlayerState | \
+           EquipmentState | NPCState | FisherState | ClassState | QuestGiverState | MinerState | AnimatorState
+
     def __init__(self, reader: BufferReader):
         self.state_id = reader.read_int32()
 
@@ -157,7 +161,7 @@ class EntityState:
             bulk = reader.read_int8()
             height = reader.read_int8()
 
-            equipped = InventoryResponse().parse(reader)
+            equipped = {ItemSlot(item[0]): item[1] for item in InventoryResponse().parse(reader).items()}
 
             self.state = EquipmentState(hair, facial_hair, hair_color, facial_hair_color, skin_color, shirt_color,
                                         pants_color, equipped, bulk, height)
@@ -191,12 +195,12 @@ class Entity:
     def __init__(self, reader: BufferReader):
         self.network_id = reader.read_int64()
 
-        self.states = {}
+        self.states: Dict[StateType, EntityState] = {}
 
         amount = reader.read_int64()
         for i in range(amount):
             state = EntityState(reader)
-            self.states[state.state_id] = state
+            self.states[StateType(state.state_id)] = state
 
     def __repr__(self):
         return f"Entity({self.network_id}, {self.states})"
@@ -220,7 +224,7 @@ class Response(NetworkPacket):
         self.full_sync = reader.read_bool()
 
 
-def update_player(states: Dict[int, EntityState], client: "multiplayer.Client"):
+def update_player(states: Dict[StateType, EntityState], client: "multiplayer.Client"):
     for state in states.values():
         if state.state_id == 0:
             client.game.local_player.username = state.state.name
@@ -231,10 +235,10 @@ def update_player(states: Dict[int, EntityState], client: "multiplayer.Client"):
             client.game.local_player.max_health = state.state.max_health
 
 
-def update_entity(network_id: int, states: Dict[int, EntityState], client: "multiplayer.Client"):
+def update_entity(network_id: int, states: Dict[StateType, EntityState], client: "multiplayer.Client"):
     if client.game.entities.get(network_id):
         for state in states.values():
-            client.game.entities[network_id].states[state.state_id] = state
+            client.game.entities[network_id].states[StateType(state.state_id)] = state
 
     if network_id == client.game.local_player.network_id:
         update_player(states, client)
@@ -249,7 +253,9 @@ def update_entities(entities: List[Entity], is_full_sync: bool, removed_entities
         client.game.entities.clear()
         client.game.entities = {entity.network_id: entity for entity in entities}
 
-        player_entity = client.game.entities[client.game.local_player.network_id]
+        player_entity = get_entity_from_player_id(client.player_id, entities)
+        client.game.local_player.network_id = player_entity.network_id
+
         update_player(player_entity.states, client)
     else:
         for entity in entities:

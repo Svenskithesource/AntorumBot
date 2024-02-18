@@ -85,7 +85,7 @@ class Client:
     async def follow_player(self, username: str):
         logging.info(f"Following player {username}")
         network_id = utils.get_entity_from_player_id(utils.get_player_id_from_username(username, self.game),
-                                                     self.game.entities).network_id
+                                                     self.game.entities.values()).network_id
 
         if network_id:
             await self.follow(network_id)
