@@ -1,16 +1,19 @@
 import base64
 import enum
-from typing import Literal, List, TYPE_CHECKING, Dict
+from typing import Literal, List, TYPE_CHECKING, Dict, Tuple
 import struct
 
 if TYPE_CHECKING:
     import multiplayer
     from packets.inventory import InventoryItem
+    from packets.world_entities import Entity
 
 from Cryptodome.PublicKey import RSA
 from Cryptodome.Cipher import PKCS1_v1_5
 
 BYTEORDER: Literal['little', 'big'] = "big"
+
+ENEMIES = ["Gremneer"]
 
 
 class StateType(enum.Enum):
@@ -126,7 +129,93 @@ def get_player_id_from_username(username: str, game: "multiplayer.Game"):
 
 
 def get_inventory_diff(old_inventory: Dict[int, "InventoryItem"], new_inventory: Dict[int, "InventoryItem"]):
-    old_inventory = set(old_inventory.values())
-    new_inventory = set(new_inventory.values())
+    added = {}
+    removed = {}
 
-    return old_inventory - new_inventory
+    for index, item in new_inventory.items():
+        if index not in old_inventory:
+            added[index] = item
+        elif item.resource.resource_id != old_inventory[index].resource.resource_id:
+            removed[index] = old_inventory[index]
+            added[index] = item
+        elif item.amount != old_inventory[index].amount:
+            added[index] = item
+
+    for index, item in old_inventory.items():
+        if index not in new_inventory:
+            removed[index] = item
+
+    return added, removed
+
+
+def map_to_game_coords(coords: List[Tuple[float, float]]):
+    return [((x / 16) * 3, ((5632 - y) / 16) * 3) for x, y in coords]
+
+
+def is_nearby(coords: Tuple[float, float], other_coords: Tuple[float, float], distance: float):
+    return abs(coords[0] - other_coords[0]) <= distance and abs(coords[1] - other_coords[1]) <= distance
+
+
+def distance_to_entity(coords: Tuple[float, float], entity: "Entity"):
+    return ((coords[0] - entity.states[StateType.TRANSFORM].state.position[0]) ** 2 +
+            (coords[1] - entity.states[StateType.TRANSFORM].state.position[1]) ** 2) ** 0.5
+
+
+def get_nearest_entity(coords: Tuple[float, float], entities: Dict[int, "Entity"]):
+    nearest_entity = None
+    nearest_distance = float("inf")
+
+    for entity in entities.values():
+        if entity.states.get(StateType.TRANSFORM):
+            distance = ((coords[0] - entity.states[StateType.TRANSFORM].state.position[0]) ** 2 +
+                        (coords[1] - entity.states[StateType.TRANSFORM].state.position[1]) ** 2)
+
+            if distance < nearest_distance:
+                nearest_distance = distance
+                nearest_entity = entity
+
+    return nearest_entity
+
+
+def distance_to_closest_enemy(coords: Tuple[float, float], entities: Dict[int, "Entity"]):
+    nearest_distance = float("inf")
+
+    for entity in entities.values():
+        if entity.states.get(StateType.TRANSFORM) and entity.states.get(StateType.INFO) and entity.states.get(
+                StateType.INFO).state.name in ENEMIES:
+            distance = distance_to_entity(coords, entity)
+
+            if distance < nearest_distance:
+                nearest_distance = distance
+
+    return nearest_distance
+
+
+def get_nearest_safe_entity(coords: Tuple[float, float], requested_entities: Dict[int, "Entity"],
+                            all_entities: Dict[int, "Entity"], safe_distance: float = 10):
+    nearest_entity = None
+    nearest_distance = float("inf")
+
+    for entity in requested_entities.values():
+        if entity.states.get(StateType.TRANSFORM) and distance_to_closest_enemy(
+                entity.states[StateType.TRANSFORM].state.position, all_entities) > safe_distance:
+            distance = distance_to_entity(coords, entity)
+
+            if distance < nearest_distance:
+                nearest_distance = distance
+                nearest_entity = entity
+
+    return nearest_entity
+
+
+def time_to_dest(start_coords: Tuple[float, float], destinations: List[Tuple[float, float]], speed: float):
+    if not destinations:
+        return 0
+
+    time = 0
+    for i in range(len(destinations) - 1):
+        time += ((destinations[i][0] - destinations[i + 1][0]) ** 2 +
+                 (destinations[i][1] - destinations[i + 1][1]) ** 2) ** 0.5 / speed
+
+    time += ((destinations[0][0] - start_coords[0]) ** 2 + (destinations[0][1] - start_coords[1]) ** 2) ** 0.5 / speed
+    return time

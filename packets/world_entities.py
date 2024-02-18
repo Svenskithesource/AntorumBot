@@ -1,7 +1,10 @@
 import enum
 import logging
 from dataclasses import dataclass
-from typing import Tuple, List, Dict
+from typing import Tuple, List, Dict, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import multiplayer
 
 from game import Game
 from packets import NetworkPacket
@@ -255,6 +258,7 @@ def update_entities(entities: List[Entity], is_full_sync: bool, removed_entities
 
         player_entity = get_entity_from_player_id(client.player_id, entities)
         client.game.local_player.network_id = player_entity.network_id
+        client.game.network_id = player_entity.network_id
 
         update_player(player_entity.states, client)
     else:
@@ -270,7 +274,8 @@ def handle(packet: Response, client: "multiplayer.Client"):
         player_entity = get_entity_from_player_id(client.player_id, packet.entities)
         network_id = player_entity.network_id
 
-        client.game = Game(client.player_id, network_id, client)
+        client.game = Game(client.player_id, network_id)
+        client._loaded += 1
 
     logging.debug(f"Received {len(packet.entities)} entities, at coords {packet.coords}")
     logging.debug(f"Removed {len(packet.removed_entities)} entities")

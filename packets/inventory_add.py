@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from dataclasses import dataclass
@@ -44,8 +45,8 @@ def handle(packet: Response, client: "multiplayer.Client"):
                                                                          packet.amount,
                                                                          packet.property_bag)
 
-    logging.debug(
-        f"Adding item to inventory: {packet.index} {packet.resource_id} {packet.amount} {packet.property_bag}")
+    logging.info(
+        f"Adding {packet.amount} {client.game.resources[packet.resource_id].name} to inventory (index {packet.index})")
 
 
 receive_packet = Response

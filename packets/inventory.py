@@ -29,6 +29,9 @@ class Response(NetworkPacket):
 
 
 def handle(packet: Response, client: "multiplayer.Client"):
+    if client._loaded < 2:
+        client._loaded += 1
+
     logging.debug(f"Received inventory: {packet.items}")
     client.game.local_player.inventory = packet.items
 

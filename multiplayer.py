@@ -24,14 +24,20 @@ class Client:
 
         self.is_following = False
 
+        self._loaded = 0  # counter to check if necessary packets are received, 2 means the client is loaded
+
         self.game: Game = None
+
+    @property
+    def loaded(self):
+        return self._loaded == 2
 
     async def connect(self):
         logging.info(f"Connecting to {self.host}:{self.port}")
         self.reader, self.writer = await asyncio.open_connection(self.host, self.port)
         logging.info("Connected!")
 
-        asyncio.create_task(self.recv_loop())
+        asyncio.get_event_loop().create_task(self.recv_loop())
 
         logging.info("Sending handshake")
         self.send_queue.put_nowait(packets.Handshake())
@@ -55,7 +61,7 @@ class Client:
 
         logging.info("Loading game")
         self.send_queue.put_nowait(packets.LoadComplete())
-        while not self.game or not self.game.entities:
+        while not self.loaded:
             await asyncio.sleep(0.01)
         self.send_queue.put_nowait(packets.LoadComplete())  # Server needs two of these for some reason
         logging.info("Game loaded!")
@@ -122,8 +128,6 @@ class Client:
             data = await self.reader.read(packet_size)
             while len(data) < packet_size:
                 data += await self.reader.read(packet_size - len(data))
-
-            logging.debug("Received packet, adding to queue")
 
             self.recv_queue.put_nowait((packet_id, data))
 
