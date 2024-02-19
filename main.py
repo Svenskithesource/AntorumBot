@@ -25,8 +25,11 @@ async def main():
 
     await asyncio.sleep(2)
     print(client.game.local_player)
-    forage = actions.ForageWeeds(client)
-    await forage.run()
+    # forage = actions.ForageWeeds(client)
+    # await forage.run()
+
+    follow = actions.FollowPlayer(client, "svenskithesource")
+    await follow.run()
     # await client.move(25, 124)
     # await client.move(50, 360)
     # asyncio.create_task(client.follow_player("IlexBOT"))

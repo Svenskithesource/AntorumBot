@@ -10,7 +10,7 @@ import packets
 import utils
 from packets.world_entities import Entity, InteractionType
 from utils import StateType, get_future_position_from_entity, get_inventory_diff, map_to_game_coords, is_nearby, \
-    get_nearest_safe_entity, time_to_dest
+    get_nearest_entity, time_to_dest, coords_in_bounds
 
 
 class Action:
@@ -44,7 +44,7 @@ class Action:
 
 
 class ForageWeeds(Action):
-    forage_coords = map_to_game_coords([(364, 5075)])  # (540, 3960)
+    forage_coords = map_to_game_coords([(21, 5573), (547, 4600)])
     moving_to_coords = False
 
     old_inv = {}
@@ -53,18 +53,12 @@ class ForageWeeds(Action):
         logging.info("Starting forage action")
 
         while True:
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.1)
 
             weed = await self.get_nearest_forageable(self.client.game.entities)
 
-            if not weed and not self.moving_to_coords:
-                weed_coords = random.choice(self.forage_coords)
-                await self.client.move(weed_coords[0], weed_coords[1])
-                self.moving_to_coords = True
-                logging.info(f"Moving to coords {weed_coords} to forage")
-
-                continue
-            elif not weed:
+            if not weed:
+                await asyncio.sleep(1)
                 continue
 
             self.old_inv = copy.deepcopy(self.client.game.local_player.inventory)
@@ -94,7 +88,7 @@ class ForageWeeds(Action):
             movement = self.client.game.entities[self.client.game.network_id].states[StateType.MOVEMENT].state
 
             travel_time = time_to_dest(self.client.game.local_player.position, movement.destinations,
-                                       movement.speed) + 2  # 2 seconds for good measure
+                                       movement.speed) + 10  # 10 seconds for good measure
             logging.debug(f"Travel time to forage: {travel_time} seconds")
 
             while not get_inventory_diff(self.old_inv, self.client.game.local_player.inventory)[0]:
@@ -118,7 +112,38 @@ class ForageWeeds(Action):
         forageables = {}
 
         for entity in entities.values():
-            if InteractionType.FORAGE in entity.states[StateType.INTERACTABLE].state.interactions:
+            if InteractionType.FORAGE in entity.states[StateType.INTERACTABLE].state.interactions and coords_in_bounds(
+                    entity.states[StateType.TRANSFORM].state.position, self.forage_coords):
                 forageables[entity.network_id] = entity
 
-        return get_nearest_safe_entity(self.client.game.local_player.position, forageables, entities)
+        return get_nearest_entity(self.client.game.local_player.position, forageables)
+
+
+class FollowPlayer(Action):
+    def __init__(self, client: "multiplayer.Client", username: str):
+        super().__init__(client)
+        self.username = username
+
+    async def follow(self, network_id: int):
+        logging.debug(f"Following entity {network_id}")
+        original_position = utils.get_future_position_from_entity(network_id, self.client.game)
+
+        if original_position != self.client.game.local_player.position:
+            await self.client.move(*original_position)
+
+        while True:
+            if original_position != utils.get_future_position_from_entity(network_id, self.client.game):
+                original_position = utils.get_future_position_from_entity(network_id, self.client.game)
+                await self.client.move(original_position[0], original_position[1])
+
+            await asyncio.sleep(0.01)
+
+    async def _run(self):
+        logging.info(f"Following player {self.username}")
+        network_id = utils.get_entity_from_player_id(utils.get_player_id_from_username(self.username, self.client.game),
+                                                     list(self.client.game.entities.values())).network_id
+
+        if network_id:
+            await self.follow(network_id)
+        else:
+            logging.error(f"Player {self.username} not found")

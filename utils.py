@@ -219,3 +219,7 @@ def time_to_dest(start_coords: Tuple[float, float], destinations: List[Tuple[flo
 
     time += ((destinations[0][0] - start_coords[0]) ** 2 + (destinations[0][1] - start_coords[1]) ** 2) ** 0.5 / speed
     return time
+
+
+def coords_in_bounds(coords: Tuple[float, float], bounds: Tuple[Tuple[float, float], Tuple[float, float]]):
+    return bounds[0][0] <= coords[0] <= bounds[1][0] and bounds[0][1] <= coords[1] <= bounds[1][1]

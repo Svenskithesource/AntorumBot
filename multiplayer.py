@@ -22,8 +22,6 @@ class Client:
         self.encryption_key = ""
         self.player_id = -1
 
-        self.is_following = False
-
         self._loaded = 0  # counter to check if necessary packets are received, 2 means the client is loaded
 
         self.game: Game = None
@@ -69,38 +67,6 @@ class Client:
     async def move(self, x: float, y: float):
         logging.info(f"Moving to {x}, {y}")
         self.send_queue.put_nowait(packets.Move(x, y))
-
-    async def follow(self, network_id: int):
-        logging.debug(f"Following entity {network_id}")
-        self.is_following = True
-        original_position = utils.get_future_position_from_entity(network_id, self.game)
-
-        if original_position != self.game.local_player.position:
-            await self.move(*original_position)
-
-        while True:
-            if not self.is_following:
-                break
-
-            if original_position != utils.get_future_position_from_entity(network_id, self.game):
-                original_position = utils.get_future_position_from_entity(network_id, self.game)
-                await self.move(original_position[0], original_position[1])
-
-            await asyncio.sleep(0.01)
-
-    async def follow_player(self, username: str):
-        logging.info(f"Following player {username}")
-        network_id = utils.get_entity_from_player_id(utils.get_player_id_from_username(username, self.game),
-                                                     self.game.entities.values()).network_id
-
-        if network_id:
-            await self.follow(network_id)
-        else:
-            logging.error(f"Player {username} not found")
-
-    async def stop_following(self):
-        logging.info("Stopping follow")
-        self.is_following = False
 
     async def send(self, data: packets.NetworkPacket):
         serialized = data.serialize()
