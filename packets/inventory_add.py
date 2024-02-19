@@ -39,7 +39,11 @@ class Response(NetworkPacket):
 
 def handle(packet: Response, client: "multiplayer.Client"):
     if packet.index in client.game.local_player.inventory.keys():
-        client.game.local_player.inventory[packet.index].amount += packet.amount
+        if packet.resource_id == client.game.local_player.inventory[packet.index].resource.resource_id:
+            client.game.local_player.inventory[packet.index].amount += packet.amount
+        else:
+            client.game.local_player.inventory[packet.index] = InventoryItem(client.game.resources[packet.resource_id],
+                                                                             packet.amount, packet.property_bag)
     else:
         client.game.local_player.inventory[packet.index] = InventoryItem(client.game.resources[packet.resource_id],
                                                                          packet.amount,

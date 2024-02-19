@@ -16,41 +16,38 @@ from utils import StateType, get_future_position_from_entity, get_inventory_diff
 class Action:
     def __init__(self, client: multiplayer.Client):
         self.client = client
-        self.is_running = False
+        self._task: asyncio.Task = None
+
+    async def run_wrapper(self):
+        try:
+            await self._run()
+        except Exception as e:
+            traceback.print_exception(
+                type(e), e, e.__traceback__
+            )
 
     async def _run(self):
         # Has to be implemented by the subclass
         pass
 
     async def run(self):
-        self.is_running = True
-        task = asyncio.get_running_loop().create_task(self._run())
-        while self.is_running:
-            await asyncio.sleep(0.01)
+        self._task = asyncio.create_task(self.run_wrapper())
 
-            try:
-                if exception := task.exception():
-                    traceback.print_exception(
-                        type(exception), exception, exception.__traceback__
-                    )
-                    break
-            except asyncio.InvalidStateError:
-                continue
-
-        task.cancel()
-
-    async def stop(self):
-        self.is_running = False
+    def stop(self):
+        logging.info(f"Stopping action {self.__class__.__name__}")
+        self._task.cancel()
 
 
 class ForageWeeds(Action):
-    forage_coords = map_to_game_coords([(21, 5573), (547, 4600)])
-    moving_to_coords = False
+    forage_coords = map_to_game_coords([(21, 5573), (547, 4600), (390, 5082)])
 
     old_inv = {}
 
     async def _run(self):
         logging.info("Starting forage action")
+        if not coords_in_bounds(self.client.game.local_player.position, self.forage_coords[:2]):
+            logging.info("Moving to forage area")
+            await self.client.move(self.forage_coords[2][0], self.forage_coords[2][1])
 
         while True:
             await asyncio.sleep(0.1)
@@ -139,11 +136,17 @@ class FollowPlayer(Action):
             await asyncio.sleep(0.01)
 
     async def _run(self):
-        logging.info(f"Following player {self.username}")
-        network_id = utils.get_entity_from_player_id(utils.get_player_id_from_username(self.username, self.client.game),
-                                                     list(self.client.game.entities.values())).network_id
+        try:
+            logging.info(f"Following player {self.username}")
+            network_id = utils.get_entity_from_player_id(
+                utils.get_player_id_from_username(self.username, self.client.game),
+                list(self.client.game.entities.values())).network_id
 
-        if network_id:
-            await self.follow(network_id)
-        else:
-            logging.error(f"Player {self.username} not found")
+            if network_id:
+                await self.follow(network_id)
+            else:
+                logging.error(f"Player {self.username} not found")
+        except Exception as e:
+            traceback.print_exception(
+                type(e), e, e.__traceback__
+            )

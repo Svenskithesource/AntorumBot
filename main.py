@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 async def main():
     client = multiplayer.Client()
 
-    asyncio.get_running_loop().create_task(client.update())
+    asyncio.create_task(client.update())
     await client.connect()
 
     await client.login(secrets.USERNAME, secrets.PASSWORD)
@@ -23,13 +23,16 @@ async def main():
 
     await client.load_game()
 
-    await asyncio.sleep(2)
+    await asyncio.sleep(1)
     print(client.game.local_player)
-    # forage = actions.ForageWeeds(client)
-    # await forage.run()
+    print(client.game.local_player.inventory)
 
-    follow = actions.FollowPlayer(client, "svenskithesource")
-    await follow.run()
+    forage = actions.ForageWeeds(client)
+    await forage.run()
+
+    # follow = actions.FollowPlayer(client, "svenskithesource")
+    # await follow.run()
+
     # await client.move(25, 124)
     # await client.move(50, 360)
     # asyncio.create_task(client.follow_player("IlexBOT"))
@@ -45,3 +48,4 @@ async def main():
 if __name__ == "__main__":
     main_loop = asyncio.get_event_loop()
     main_loop.run_until_complete(main())
+    main_loop.run_forever()
