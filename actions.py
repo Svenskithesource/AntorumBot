@@ -136,17 +136,12 @@ class FollowPlayer(Action):
             await asyncio.sleep(0.01)
 
     async def _run(self):
-        try:
-            logging.info(f"Following player {self.username}")
-            network_id = utils.get_entity_from_player_id(
-                utils.get_player_id_from_username(self.username, self.client.game),
-                list(self.client.game.entities.values())).network_id
+        logging.info(f"Following player {self.username}")
+        network_id = utils.get_entity_from_player_id(
+            utils.get_player_id_from_username(self.username, self.client.game),
+            list(self.client.game.entities.values())).network_id
 
-            if network_id:
-                await self.follow(network_id)
-            else:
-                logging.error(f"Player {self.username} not found")
-        except Exception as e:
-            traceback.print_exception(
-                type(e), e, e.__traceback__
-            )
+        if network_id:
+            await self.follow(network_id)
+        else:
+            logging.error(f"Player {self.username} not found")
