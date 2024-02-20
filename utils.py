@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import datetime
 import enum
@@ -7,6 +8,7 @@ import struct
 if TYPE_CHECKING:
     import multiplayer
     from packets.inventory import InventoryItem
+    from packets.inventory_add import ItemResource
     from packets.world_entities import Entity
     from packets.chat import ChatMessage
 
@@ -236,3 +238,51 @@ def message_contains_since(message: str, messages: List[Tuple[datetime.datetime,
             return True
 
     return False
+
+
+def inventory_contains_resource_id(resource_id: int, inventory: Dict[int, "InventoryItem"], amount: int):
+    total = 0
+
+    for item in inventory.values():
+        if item.resource.resource_id == resource_id:
+            total += item.amount
+
+    return total >= amount
+
+
+async def wait_for(predicate, timeout: int):
+    i = 0
+
+    while not predicate():
+        await asyncio.sleep(0.1)
+
+        i += 1
+        if i > timeout * 10:
+            return False
+
+    return True
+
+
+def get_resource_by_name(name: str, resources: Dict[int, "ItemResource"]):
+    for resource in resources.values():
+        if resource.resource_name == name.lower():
+            return resource
+    return None
+
+
+def get_inventory_slot_by_resource_id(resource_id: int, inventory: Dict[int, "InventoryItem"]):
+    for slot, item in inventory.items():
+        if item.resource.resource_id == resource_id:
+            return slot
+
+    return None
+
+
+def amount_of_resource_in_inventory(resource_id: int, inventory: Dict[int, "InventoryItem"]):
+    total = 0
+
+    for slot, item in inventory.items():
+        if item.resource.resource_id == resource_id:
+            total += item.amount
+
+    return total

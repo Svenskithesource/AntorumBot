@@ -29,8 +29,17 @@ async def main():
     forage = actions.ForageWeeds(client)
     await forage.run()
 
-    # follow = actions.FollowPlayer(client, "svenskithesource")
+    # follow = actions.FollowPlayer(client, "Dooskington")
     # await follow.run()
+
+    # sell = actions.SellInventory(client, "skartweed", 1)
+    # await sell.run()
+    #
+    # while not sell.done:
+    #     await asyncio.sleep(0.1)
+    #
+    # print(sell.result)
+    # print(client.game.local_player.inventory)
 
     # await client.move(25, 124)
     # await client.move(50, 360)

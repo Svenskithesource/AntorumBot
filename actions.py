@@ -9,15 +9,29 @@ from typing import Dict, List
 import multiplayer
 import packets
 import utils
+from packets.barter_close import BarterStatus
+from packets.barter_open import BarterInventoryItemArea
 from packets.world_entities import Entity, InteractionType
 from utils import StateType, get_future_position_from_entity, message_contains_since, map_to_game_coords, is_nearby, \
-    get_nearest_entity, time_to_dest, coords_in_bounds
+    get_nearest_entity, time_to_dest, coords_in_bounds, inventory_contains_resource_id, wait_for, get_resource_by_name, \
+    get_inventory_slot_by_resource_id, amount_of_resource_in_inventory
 
 
 class Action:
     def __init__(self, client: multiplayer.Client):
         self.client = client
         self._task: asyncio.Task = None
+
+    @property
+    def done(self):
+        return self._task.done()
+
+    @property
+    def result(self):
+        try:
+            return self._task.result()
+        except (asyncio.CancelledError, asyncio.InvalidStateError):
+            return None
 
     async def run_wrapper(self):
         try:
@@ -61,26 +75,17 @@ class ForageWeeds(Action):
             self.client.send_queue.put_nowait(packets.Interact(weed.network_id, InteractionType.FORAGE))
             logging.info(f"Attempting to forage entity {weed.states[StateType.INFO].state.name} ({weed.network_id})")
 
-            success = False
-            i = 0
-            while is_nearby(get_future_position_from_entity(self.client.game.network_id, self.client.game),
-                            self.client.game.entities[weed.network_id].states[StateType.TRANSFORM].state.position, 2):
-                await asyncio.sleep(0.1)
-
-                i += 1
-                if i > 50:
-                    logging.warning(
-                        f"Failed to trigger forage on entity {weed.states[StateType.INFO].state.name} ({weed.network_id}) after 5 seconds")
-                    break
-            else:
-                success = True
+            success = await wait_for(
+                lambda: is_nearby(get_future_position_from_entity(self.client.game.network_id, self.client.game),
+                                  self.client.game.entities[weed.network_id].states[
+                                      StateType.TRANSFORM].state.position, 5), 5)
 
             if not success:
+                logging.warning(
+                    f"Failed to trigger forage on entity {weed.states[StateType.INFO].state.name} ({weed.network_id}) after 5 seconds")
                 self.moving_to_coords = False
                 continue
 
-            success = False
-            i = 0
             movement = self.client.game.entities[self.client.game.network_id].states[StateType.MOVEMENT].state
             start_time = datetime.datetime.now()
             travel_time = time_to_dest(self.client.game.local_player.position, movement.destinations,
@@ -89,15 +94,8 @@ class ForageWeeds(Action):
 
             logging.debug(f"Travel time to forage: {travel_time} seconds")
 
-            while not message_contains_since("You harvest", self.client.game.chat_log, start_time):
-                await asyncio.sleep(0.1)
-
-                i += 1
-                if i > travel_time * 10:
-                    logging.warning(f"Foraging still didn't happen after {travel_time} seconds, continuing")
-                    break
-            else:
-                success = True
+            success = await wait_for(
+                lambda: message_contains_since("You harvest", self.client.game.chat_log, start_time), travel_time)
 
             self.moving_to_coords = False
 
@@ -139,11 +137,102 @@ class FollowPlayer(Action):
 
     async def _run(self):
         logging.info(f"Following player {self.username}")
-        network_id = utils.get_entity_from_player_id(
+        player = utils.get_entity_from_player_id(
             utils.get_player_id_from_username(self.username, self.client.game),
-            list(self.client.game.entities.values())).network_id
+            list(self.client.game.entities.values()))
 
-        if network_id:
-            await self.follow(network_id)
+        if player:
+            await self.follow(player.network_id)
         else:
             logging.error(f"Player {self.username} not found")
+
+
+class SellInventory(Action):
+    barter_coords = map_to_game_coords([(355, 3567)])
+    is_moving = False
+
+    def __init__(self, client: "multiplayer.Client", item_name: str, amount: int = 0):
+        super().__init__(client)
+        self.item_name = item_name
+        self.item = get_resource_by_name(item_name, self.client.game.resources)
+
+        if not self.item:
+            logging.error(f"Item {item_name} not found")
+            return
+
+        if amount == 0:
+            self.amount = amount_of_resource_in_inventory(self.item.resource_id,
+                                                          self.client.game.local_player.inventory)
+        else:
+            self.amount = amount
+
+    async def _run(self):
+        logging.info(f"Selling {self.amount} {self.item_name}")
+
+        if not inventory_contains_resource_id(self.item.resource_id, self.client.game.local_player.inventory,
+                                              self.amount):
+            logging.error(f"Not enough of item {self.item_name} to sell")
+            return
+
+        while not (barter := (await self.get_barter_entity(self.client.game.entities))):
+            await asyncio.sleep(0.5)
+            if not self.is_moving:
+                await self.client.move(self.barter_coords[0][0], self.barter_coords[0][1])
+
+        self.is_moving = False
+
+        self.client.send_queue.put_nowait(packets.Interact(barter.network_id, InteractionType.BARTER))
+
+        logging.info(f"Attempting to barter with entity {barter.network_id}")
+
+        success = await wait_for(
+            lambda: is_nearby(get_future_position_from_entity(self.client.game.network_id, self.client.game),
+                              self.client.game.entities[barter.network_id].states[
+                                  StateType.TRANSFORM].state.position, 5), 5)
+
+        if not success:
+            logging.warning(
+                f"Failed to trigger barter on entity {barter.states[StateType.INFO].state.name} ({barter.network_id}) after 5 seconds")
+            return False
+
+        travel_time = time_to_dest(self.client.game.local_player.position,
+                                   self.client.game.entities[barter.network_id].states[
+                                       StateType.MOVEMENT].state.destinations,
+                                   self.client.game.entities[self.client.game.network_id].states[
+                                       StateType.MOVEMENT].state.speed) + 10
+
+        success = await wait_for(lambda: self.client.game.barter, travel_time)
+
+        if not success:
+            logging.warning(f"Failed to open barter after {travel_time} seconds")
+            return False
+
+        slot = get_inventory_slot_by_resource_id(self.item.resource_id, self.client.game.local_player.inventory)
+
+        self.client.send_queue.put_nowait(packets.BarterMove(BarterInventoryItemArea.INVENTORY, slot, self.amount))
+
+        success = await wait_for(lambda: self.client.game.barter.you_offer, 5)
+
+        if not success:
+            logging.warning(f"Failed to move item to barter after 5 seconds")
+            self.client.send_queue.put_nowait(packets.BarterClose(BarterStatus.DECLINED))
+            return False
+
+        self.client.send_queue.put_nowait(packets.BarterClose(BarterStatus.ACCEPTED))
+
+        success = await wait_for(lambda: not self.client.game.barter, 5)
+
+        if not success:
+            logging.warning(f"Failed to close barter after 5 seconds")
+            return False
+
+        return True
+
+    async def get_barter_entity(self, entities: Dict[int, Entity]):
+        barters = {}
+
+        for entity in entities.values():
+            if InteractionType.BARTER in entity.states[StateType.INTERACTABLE].state.interactions:
+                barters[entity.network_id] = entity
+
+        return get_nearest_entity(self.client.game.local_player.position, barters)

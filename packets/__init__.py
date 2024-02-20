@@ -7,6 +7,10 @@ from packets.packet import NetworkPacket
 from packets.load_complete import Request as LoadComplete
 from packets.move import Packet as Move
 from packets.interact import Packet as Interact
+from packets.inventory_read_item import Request as InventoryReadItem
+from packets.inventory_item_drop import Request as InventoryItemDrop
+from packets.barter_move import Request as BarterMove
+from packets.barter_close import Request as BarterClose
 
 handlers = {}
 
@@ -24,5 +28,4 @@ def get_handler(packet_id: int):
     if module is None:
         return None
 
-    handler = lambda data, client: module.handle(module.receive_packet(data), client)
-    return handler
+    return lambda data, client: module.handle(module.receive_packet(data), client)
