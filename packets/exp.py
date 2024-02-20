@@ -24,8 +24,9 @@ class Response(NetworkPacket):
 
 def handle(packet: Response, client: "multiplayer.Client"):
     if packet.network_id == client.game.local_player.network_id:
-        client.game.local_player.skills[packet.skill_type].experience = packet.exp
-        logging.info(f"+{packet.exp} {packet.skill_type.name} experience")
+        client.game.local_player.skills[packet.skill_type].experience += packet.exp
+        logging.info(
+            f"+{packet.exp} {packet.skill_type.name} experience ({client.game.local_player.skills[packet.skill_type].experience})")
 
 
 receive_packet = Response
