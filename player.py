@@ -32,7 +32,7 @@ class Skill:
 
 
 class Player:
-    def __init__(self, player_id: int, network_id: int, skills: List[Skill] = None, health: int = 30,
+    def __init__(self, player_id: int, network_id: int, skills: Dict[SkillType, Skill] = None, health: int = 30,
                  max_health: int = 30, username: str = "Unknown", position: Tuple[float, float] = (-1, -1),
                  stats: Dict[Stat, int] = None, inventory: Dict[int, InventoryItem] = None):
         if inventory is None:
@@ -42,7 +42,7 @@ class Player:
             stats = {}
 
         if skills is None:
-            skills = []
+            skills = {}
         self.player_id = player_id
         self.network_id = network_id
         self.skills = skills

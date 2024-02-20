@@ -17,7 +17,7 @@ class ItemType(enum.Flag):
     MISC = 1
     CONSUMABLE = 2
     INGREDIENT = 4
-    CURRENCEY = 8
+    CURRENCY = 8
     WEAPON = 16
     ARMOR = 32
     TOOL = 64

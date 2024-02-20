@@ -22,13 +22,13 @@ class Client:
         self.encryption_key = ""
         self.player_id = -1
 
-        self._loaded = 0  # counter to check if necessary packets are received, 2 means the client is loaded
+        self._loaded = 0  # counter to check if necessary packets are received, 3 means the client is loaded
 
         self.game: Game = None
 
     @property
     def loaded(self):
-        return self._loaded == 2
+        return self._loaded == 3
 
     async def connect(self):
         logging.info(f"Connecting to {self.host}:{self.port}")
@@ -78,7 +78,7 @@ class Client:
 
         self.writer.write(bytes(writer))
 
-        logging.debug(f"Serialized data: {'-'.join(hex(n)[2:].zfill(2) for n in bytes(writer))}")
+        # logging.debug(f"Serialized data: {'-'.join(hex(n)[2:].zfill(2) for n in bytes(writer))}")
         await self.writer.drain()
 
     async def recv_loop(self):

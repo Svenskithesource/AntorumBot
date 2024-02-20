@@ -1,15 +1,16 @@
 import asyncio
 import copy
+import datetime
 import logging
 import random
 import traceback
-from typing import Dict
+from typing import Dict, List
 
 import multiplayer
 import packets
 import utils
 from packets.world_entities import Entity, InteractionType
-from utils import StateType, get_future_position_from_entity, get_inventory_diff, map_to_game_coords, is_nearby, \
+from utils import StateType, get_future_position_from_entity, message_contains_since, map_to_game_coords, is_nearby, \
     get_nearest_entity, time_to_dest, coords_in_bounds
 
 
@@ -40,8 +41,7 @@ class Action:
 
 class ForageWeeds(Action):
     forage_coords = map_to_game_coords([(21, 5573), (547, 4600), (390, 5082)])
-
-    old_inv = {}
+    last_weed_id = 0
 
     async def _run(self):
         logging.info("Starting forage action")
@@ -52,13 +52,12 @@ class ForageWeeds(Action):
         while True:
             await asyncio.sleep(0.1)
 
-            weed = await self.get_nearest_forageable(self.client.game.entities)
+            weed = await self.get_nearest_forageable(self.client.game.entities, [self.last_weed_id])
 
             if not weed:
                 await asyncio.sleep(1)
                 continue
 
-            self.old_inv = copy.deepcopy(self.client.game.local_player.inventory)
             self.client.send_queue.put_nowait(packets.Interact(weed.network_id, InteractionType.FORAGE))
             logging.info(f"Attempting to forage entity {weed.states[StateType.INFO].state.name} ({weed.network_id})")
 
@@ -83,12 +82,14 @@ class ForageWeeds(Action):
             success = False
             i = 0
             movement = self.client.game.entities[self.client.game.network_id].states[StateType.MOVEMENT].state
-
+            start_time = datetime.datetime.now()
             travel_time = time_to_dest(self.client.game.local_player.position, movement.destinations,
                                        movement.speed) + 10  # 10 seconds for good measure
+            self.last_weed_id = weed.network_id
+
             logging.debug(f"Travel time to forage: {travel_time} seconds")
 
-            while not get_inventory_diff(self.old_inv, self.client.game.local_player.inventory)[0]:
+            while not message_contains_since("You harvest", self.client.game.chat_log, start_time):
                 await asyncio.sleep(0.1)
 
                 i += 1
@@ -105,12 +106,13 @@ class ForageWeeds(Action):
 
             logging.info(f"Successfully foraged entity {weed.states[StateType.INFO].state.name} ({weed.network_id})")
 
-    async def get_nearest_forageable(self, entities: Dict[int, Entity]) -> Entity:
+    async def get_nearest_forageable(self, entities: Dict[int, Entity], excluded: List[int]) -> Entity:
         forageables = {}
 
         for entity in entities.values():
             if InteractionType.FORAGE in entity.states[StateType.INTERACTABLE].state.interactions and coords_in_bounds(
-                    entity.states[StateType.TRANSFORM].state.position, self.forage_coords):
+                    entity.states[StateType.TRANSFORM].state.position,
+                    self.forage_coords) and entity.network_id not in excluded:
                 forageables[entity.network_id] = entity
 
         return get_nearest_entity(self.client.game.local_player.position, forageables)

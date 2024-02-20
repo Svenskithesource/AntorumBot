@@ -17,3 +17,4 @@ class Game:
         self.local_player: Player = Player(local_player_id, network_id)
         self.entities: Dict[int, Entity] = {}
         self.resources: Dict[int, ItemResource] = resources
+        self.chat_log = []

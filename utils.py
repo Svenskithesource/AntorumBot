@@ -1,4 +1,5 @@
 import base64
+import datetime
 import enum
 from typing import Literal, List, TYPE_CHECKING, Dict, Tuple
 import struct
@@ -7,6 +8,7 @@ if TYPE_CHECKING:
     import multiplayer
     from packets.inventory import InventoryItem
     from packets.world_entities import Entity
+    from packets.chat import ChatMessage
 
 from Cryptodome.PublicKey import RSA
 from Cryptodome.Cipher import PKCS1_v1_5
@@ -223,3 +225,14 @@ def time_to_dest(start_coords: Tuple[float, float], destinations: List[Tuple[flo
 
 def coords_in_bounds(coords: Tuple[float, float], bounds: Tuple[Tuple[float, float], Tuple[float, float]]):
     return bounds[0][0] <= coords[0] <= bounds[1][0] and bounds[0][1] <= coords[1] <= bounds[1][1]
+
+
+def message_contains_since(message: str, messages: List[Tuple[datetime.datetime, "ChatMessage"]],
+                           since: datetime.datetime):
+    for timestamp, chat_message in reversed(messages):
+        if timestamp < since:
+            return False
+        if message in chat_message.message:
+            return True
+
+    return False

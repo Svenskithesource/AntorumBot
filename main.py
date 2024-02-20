@@ -5,7 +5,6 @@ import logging
 import secrets
 
 import actions
-from utils import StateType
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", datefmt='%Y-%m-%d %H:%M:%S')
 
@@ -27,15 +26,11 @@ async def main():
     print(client.game.local_player)
     print(client.game.local_player.inventory)
 
-    # forage = actions.ForageWeeds(client)
-    # await forage.run()
+    forage = actions.ForageWeeds(client)
+    await forage.run()
 
-    follow = actions.FollowPlayer(client, "svenskithesource")
-    await follow.run()
-
-    await asyncio.sleep(10)
-
-    follow.stop()
+    # follow = actions.FollowPlayer(client, "svenskithesource")
+    # await follow.run()
 
     # await client.move(25, 124)
     # await client.move(50, 360)
