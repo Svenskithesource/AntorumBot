@@ -72,17 +72,16 @@ class ForageWeeds(Action):
                 await asyncio.sleep(1)
                 continue
 
-            self.client.send_queue.put_nowait(packets.Interact(weed.network_id, InteractionType.FORAGE))
-            logging.info(f"Attempting to forage entity {weed.states[StateType.INFO].state.name} ({weed.network_id})")
+            weed.forage()
+            logging.info(f"Attempting to forage entity {weed.name} ({weed.network_id})")
 
             success = await wait_for(
-                lambda: is_nearby(get_future_position_from_entity(self.client.game.network_id, self.client.game),
-                                  self.client.game.entities[weed.network_id].states[
-                                      StateType.TRANSFORM].state.position, 5), 5)
+                lambda: weed.is_nearby(get_future_position_from_entity(self.client.game.network_id, self.client.game)),
+                5)
 
             if not success:
                 logging.warning(
-                    f"Failed to trigger forage on entity {weed.states[StateType.INFO].state.name} ({weed.network_id}) after 5 seconds")
+                    f"Failed to trigger forage on entity {weed.name} ({weed.network_id}) after 5 seconds")
                 self.moving_to_coords = False
                 continue
 
@@ -102,15 +101,14 @@ class ForageWeeds(Action):
             if not success:
                 continue
 
-            logging.info(f"Successfully foraged entity {weed.states[StateType.INFO].state.name} ({weed.network_id})")
+            logging.info(f"Successfully foraged entity {weed.name} ({weed.network_id})")
 
     async def get_nearest_forageable(self, entities: Dict[int, Entity], excluded: List[int]) -> Entity:
         forageables = {}
 
         for entity in entities.values():
-            if InteractionType.FORAGE in entity.states[StateType.INTERACTABLE].state.interactions and coords_in_bounds(
-                    entity.states[StateType.TRANSFORM].state.position,
-                    self.forage_coords) and entity.network_id not in excluded:
+            if (entity.can_forage() and coords_in_bounds(entity.position, self.forage_coords)
+                    and entity.network_id not in excluded):
                 forageables[entity.network_id] = entity
 
         return get_nearest_entity(self.client.game.local_player.position, forageables)
@@ -181,7 +179,7 @@ class SellInventory(Action):
 
         self.is_moving = False
 
-        self.client.send_queue.put_nowait(packets.Interact(barter.network_id, InteractionType.BARTER))
+        self.client.send(packets.Interact(barter.network_id, InteractionType.BARTER))
 
         logging.info(f"Attempting to barter with entity {barter.network_id}")
 
@@ -209,16 +207,16 @@ class SellInventory(Action):
 
         slot = get_inventory_slot_by_resource_id(self.item.resource_id, self.client.game.local_player.inventory)
 
-        self.client.send_queue.put_nowait(packets.BarterMove(BarterInventoryItemArea.INVENTORY, slot, self.amount))
+        self.client.send(packets.BarterMove(BarterInventoryItemArea.INVENTORY, slot, self.amount))
 
         success = await wait_for(lambda: self.client.game.barter.you_offer, 5)
 
         if not success:
             logging.warning(f"Failed to move item to barter after 5 seconds")
-            self.client.send_queue.put_nowait(packets.BarterClose(BarterStatus.DECLINED))
+            self.client.send(packets.BarterClose(BarterStatus.DECLINED))
             return False
 
-        self.client.send_queue.put_nowait(packets.BarterClose(BarterStatus.ACCEPTED))
+        self.client.send(packets.BarterClose(BarterStatus.ACCEPTED))
 
         success = await wait_for(lambda: not self.client.game.barter, 5)
 
