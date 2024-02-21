@@ -27,8 +27,16 @@ async def main():
     print(client.game.local_player.inventory)
     print(client.game.resources)
 
-    forage = actions.ForageWeeds(client)
-    await forage.run()
+    while True:
+        forage = actions.ForageWeeds(client)
+        await forage.run()
+
+        await forage.wait_to_finish()
+
+        sell = actions.SellInventory(client, "skartweed")
+        await sell.run()
+
+        await sell.wait_to_finish()
 
     # follow = actions.FollowPlayer(client, "Dooskington")
     # await follow.run()

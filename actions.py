@@ -32,6 +32,10 @@ class Action:
         except (asyncio.CancelledError, asyncio.InvalidStateError):
             return None
 
+    async def wait_to_finish(self):
+        while not self.done:
+            await asyncio.sleep(0.1)
+
     async def run_wrapper(self, *args, **kwargs):
         try:
             return await self._run(*args, **kwargs)
@@ -105,7 +109,12 @@ class ForageWeeds(Action):
         if loop:
             while True:
                 await asyncio.sleep(0.1)
+                time = datetime.datetime.now()
                 await self.forage()
+
+                if message_contains_since("You need at least one free bag slot to forage.", self.client.game.chat_log,
+                                          time):
+                    return True
 
         else:
             if wait_for_movement:
@@ -141,7 +150,6 @@ class ForageWeeds(Action):
                     and has_sufficient_level(self.weed_levels,
                                              self.client.game.local_player.skills[SkillType.HERBOLOGY].level,
                                              entity.name.lower())):
-                print(entity.states[StateType.INFO].state.model_id)
                 forageables[entity.network_id] = entity
 
         return get_nearest_entity(self.client.game.local_player.position, forageables)
