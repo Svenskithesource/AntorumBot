@@ -17,6 +17,7 @@ class Response(NetworkPacket):
 
 def handle(packet: Response, client: "multiplayer.Client"):
     logging.debug(f"Spawning entity {packet.data.network_id}")
+    packet.data._client = client
     if client.game.entities.get(packet.data.network_id):
         update_entity(packet.data.network_id, packet.data.states, client)
     else:
