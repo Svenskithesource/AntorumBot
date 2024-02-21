@@ -1,11 +1,11 @@
 from typing import TYPE_CHECKING
 
 from packets import NetworkPacket
-from packets.world_entities import InteractionType
 from utils import BufferWriter, BufferReader, StateType
 
 if TYPE_CHECKING:
     import multiplayer
+    from packets.world_entities import InteractionType
 
 packet_id = 11
 
@@ -13,8 +13,9 @@ packet_id = 11
 class Packet(NetworkPacket):
     packet_id = packet_id
 
-    def __init__(self, network_id: int, interaction_type: InteractionType):
+    def __init__(self, network_id: int, interaction_type: "InteractionType"):
         self.network_id = network_id
+
         self.interaction_type = interaction_type
 
     def serialize(self):

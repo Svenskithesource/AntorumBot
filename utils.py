@@ -156,7 +156,7 @@ def map_to_game_coords(coords: List[Tuple[float, float]]):
     return [((x / 16) * 3, ((5632 - y) / 16) * 3) for x, y in coords]
 
 
-def is_nearby(coords: Tuple[float, float], other_coords: Tuple[float, float], distance: float):
+def is_nearby(coords: Tuple[float, float], other_coords: Tuple[float, float], distance: float = 5):
     return abs(coords[0] - other_coords[0]) <= distance and abs(coords[1] - other_coords[1]) <= distance
 
 

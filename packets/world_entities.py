@@ -10,10 +10,11 @@ from game import Game
 from packets import NetworkPacket
 from packets.inventory import InventoryItem
 from packets.inventory import Response as InventoryResponse
+from packets.interact import Packet as Interact
 
 from packets.item import ItemSlot
 
-from utils import BufferReader, get_entity_from_player_id, StateType
+from utils import BufferReader, get_entity_from_player_id, StateType, is_nearby
 
 packet_id = 29
 
@@ -205,6 +206,92 @@ class Entity:
             state = EntityState(reader)
             self.states[StateType(state.state_id)] = state
 
+        self._client: "multiplayer.Client" = None  # Gets set by the handler
+
+    @property
+    def name(self):
+        if self.states.get(StateType.INFO):
+            return self.states[StateType.INFO].state.name
+
+        return "Unknown entity"
+
+    def can_interact(self, interaction: InteractionType):
+        if not self.states.get(StateType.INTERACTABLE):
+            return False
+
+        return interaction in self.states[StateType.INTERACTABLE].state.interactions
+
+    @property
+    def position(self):
+        if self.states.get(StateType.TRANSFORM):
+            return self.states[StateType.TRANSFORM].state.position
+
+        return (-1.0, -1.0)
+
+    def can_barter(self):
+        return self.can_interact(InteractionType.BARTER)
+
+    def can_forage(self):
+        return self.can_interact(InteractionType.FORAGE)
+
+    def can_fish(self):
+        return self.can_interact(InteractionType.FISH)
+
+    def can_mine(self):
+        return self.can_interact(InteractionType.MINE)
+
+    def can_smelt_at(self):
+        return self.can_interact(InteractionType.SMELT_AT)
+
+    def can_craft(self):
+        return self.can_interact(InteractionType.CRAFT)
+
+    def can_perform_ritual(self):
+        return self.can_interact(InteractionType.PERFORM_RITUAL)
+
+    def can_access_vault(self):
+        return self.can_interact(InteractionType.ACCESS_VAULT)
+
+    def can_talk_to(self):
+        return self.can_interact(InteractionType.TALK_TO)
+
+    def can_open(self):
+        return self.can_interact(InteractionType.OPEN)
+
+    def can_attack(self):
+        return self.can_interact(InteractionType.ATTACK)
+
+    def can_walk_to(self):
+        return self.can_interact(InteractionType.WALK_TO)
+
+    def can_cook_on(self):
+        return self.can_interact(InteractionType.COOK_ON)
+
+    def can_examine(self):
+        return self.can_interact(InteractionType.EXAMINE)
+
+    def can_pick_up(self):
+        return self.can_interact(InteractionType.PICK_UP)
+
+    def forage(self):
+        if self.can_forage():
+            self._client.send(Interact(self.network_id, InteractionType.FORAGE))
+
+            return True
+
+        return False
+
+    def barter(self):
+        if self.can_barter():
+            self._client.send(Interact(self.network_id, InteractionType.BARTER))
+
+            return True
+
+        return False
+
+    def is_nearby(self, position: Tuple[float, float], distance: float = 5):
+        return is_nearby(position, self.states[StateType.TRANSFORM].state.position, distance)
+
     def __repr__(self):
         return f"Entity({self.network_id}, {self.states})"
 
@@ -270,6 +357,9 @@ def update_entities(entities: List[Entity], is_full_sync: bool, removed_entities
 
 
 def handle(packet: Response, client: "multiplayer.Client"):
+    for entity in packet.entities:
+        entity._client = client
+
     if not client.game:
         player_entity = get_entity_from_player_id(client.player_id, packet.entities)
         network_id = player_entity.network_id

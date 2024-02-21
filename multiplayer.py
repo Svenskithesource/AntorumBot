@@ -35,10 +35,10 @@ class Client:
         self.reader, self.writer = await asyncio.open_connection(self.host, self.port)
         logging.info("Connected!")
 
-        asyncio.get_event_loop().create_task(self.recv_loop())
+        asyncio.create_task(self.recv_loop())
 
         logging.info("Sending handshake")
-        self.send_queue.put_nowait(packets.Handshake())
+        self.send(packets.Handshake())
 
     async def login(self, username: str, password: str):
         if self.logged_in:
@@ -49,7 +49,7 @@ class Client:
             await asyncio.sleep(0.1)
 
         logging.info(f"Logging in as {username}")
-        self.send_queue.put_nowait(
+        self.send(
             packets.Login(username, utils.EncryptionHelper(self.encryption_key).encrypt(password.encode("utf-8"))))
 
     async def load_game(self):
@@ -58,17 +58,20 @@ class Client:
             return
 
         logging.info("Loading game")
-        self.send_queue.put_nowait(packets.LoadComplete())
+        self.send(packets.LoadComplete())
         while not self.loaded:
             await asyncio.sleep(0.01)
-        self.send_queue.put_nowait(packets.LoadComplete())  # Server needs two of these for some reason
+        self.send(packets.LoadComplete())  # Server needs two of these for some reason
         logging.info("Game loaded!")
 
     async def move(self, x: float, y: float):
         logging.info(f"Moving to {x}, {y}")
-        self.send_queue.put_nowait(packets.Move(x, y))
+        self.send(packets.Move(x, y))
 
-    async def send(self, data: packets.NetworkPacket):
+    def send(self, data: packets.NetworkPacket):
+        self.send_queue.put_nowait(data)
+
+    async def _send(self, data: packets.NetworkPacket):
         serialized = data.serialize()
         writer = BufferWriter()
 
@@ -115,4 +118,4 @@ class Client:
 
                 logging.debug(f"Sending packet {data.packet_id} with data {data}")
 
-                await self.send(data)
+                await self._send(data)
