@@ -14,7 +14,7 @@ from packets.interact import Packet as Interact
 
 from packets.item import ItemSlot
 
-from utils import BufferReader, get_entity_from_player_id, StateType, is_nearby
+from utils import BufferReader, get_entity_from_player_id, StateType, is_nearby, distance_to_entity
 
 packet_id = 29
 
@@ -290,7 +290,10 @@ class Entity:
         return False
 
     def is_nearby(self, position: Tuple[float, float], distance: float = 5):
-        return is_nearby(position, self.states[StateType.TRANSFORM].state.position, distance)
+        return is_nearby(position, self.position, distance)
+
+    def distance_to(self, position: Tuple[float, float]):
+        return distance_to_entity(position, self)
 
     def __repr__(self):
         return f"Entity({self.network_id}, {self.states})"

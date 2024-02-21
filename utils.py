@@ -122,12 +122,12 @@ def get_entity_from_player_id(player_id: int, entities: List["world_entities.Ent
 def get_future_position_from_entity(network_id, game: "multiplayer.Game"):
     return game.entities[network_id].states[StateType.MOVEMENT].state.destinations[-1] \
         if game.entities[network_id].states[StateType.MOVEMENT].state.destinations \
-        else game.entities[network_id].states[StateType.TRANSFORM].state.position
+        else game.entities[network_id].position
 
 
 def get_player_id_from_username(username: str, game: "multiplayer.Game"):
     for entity in game.entities.values():
-        if entity.states.get(StateType.INFO) and entity.states[StateType.INFO].state.name == username:
+        if entity.name == username:
             return entity.states[StateType.PLAYER].state.player_id
     return None
 
@@ -161,18 +161,18 @@ def is_nearby(coords: Tuple[float, float], other_coords: Tuple[float, float], di
 
 
 def distance_to_entity(coords: Tuple[float, float], entity: "Entity"):
-    return ((coords[0] - entity.states[StateType.TRANSFORM].state.position[0]) ** 2 +
-            (coords[1] - entity.states[StateType.TRANSFORM].state.position[1]) ** 2) ** 0.5
+    return ((coords[0] - entity.position[0]) ** 2 +
+            (coords[1] - entity.position[1]) ** 2) ** 0.5
 
 
-def get_nearest_entity(coords: Tuple[float, float], entities: Dict[int, "Entity"]):
+def get_nearest_entity(coords: Tuple[float, float], entities: Dict[int, "Entity"]) -> None | Entity:
     nearest_entity = None
     nearest_distance = float("inf")
 
     for entity in entities.values():
-        if entity.states.get(StateType.TRANSFORM):
-            distance = ((coords[0] - entity.states[StateType.TRANSFORM].state.position[0]) ** 2 +
-                        (coords[1] - entity.states[StateType.TRANSFORM].state.position[1]) ** 2)
+        if entity.position:
+            distance = ((coords[0] - entity.position[0]) ** 2 +
+                        (coords[1] - entity.position[1]) ** 2)
 
             if distance < nearest_distance:
                 nearest_distance = distance
@@ -185,9 +185,8 @@ def distance_to_closest_enemy(coords: Tuple[float, float], entities: Dict[int, "
     nearest_distance = float("inf")
 
     for entity in entities.values():
-        if entity.states.get(StateType.TRANSFORM) and entity.states.get(StateType.INFO) and entity.states.get(
-                StateType.INFO).state.name in ENEMIES:
-            distance = distance_to_entity(coords, entity)
+        if entity.position and entity.name in ENEMIES:
+            distance = entity.distance_to(coords)
 
             if distance < nearest_distance:
                 nearest_distance = distance
@@ -201,9 +200,9 @@ def get_nearest_safe_entity(coords: Tuple[float, float], requested_entities: Dic
     nearest_distance = float("inf")
 
     for entity in requested_entities.values():
-        if entity.states.get(StateType.TRANSFORM) and distance_to_closest_enemy(
-                entity.states[StateType.TRANSFORM].state.position, all_entities) > safe_distance:
-            distance = distance_to_entity(coords, entity)
+        if entity.position != (-1, -1) and distance_to_closest_enemy(
+                entity.position, all_entities) > safe_distance:
+            distance = entity.distance_to(coords)
 
             if distance < nearest_distance:
                 nearest_distance = distance
