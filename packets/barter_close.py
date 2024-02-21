@@ -35,7 +35,7 @@ class Response(NetworkPacket):
 
 
 def handle(packet: Response, client: "multiplayer.Client"):
-    logging.info(f"Barter closed ({packet.status})")
+    logging.info(f"Barter closed ({packet.status.name})")
     client.game.barter = None
 
 

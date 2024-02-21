@@ -2,7 +2,7 @@ import asyncio
 import base64
 import datetime
 import enum
-from typing import Literal, List, TYPE_CHECKING, Dict, Tuple
+from typing import Literal, List, TYPE_CHECKING, Dict, Tuple, Union
 import struct
 
 if TYPE_CHECKING:
@@ -165,7 +165,7 @@ def distance_to_entity(coords: Tuple[float, float], entity: "Entity"):
             (coords[1] - entity.position[1]) ** 2) ** 0.5
 
 
-def get_nearest_entity(coords: Tuple[float, float], entities: Dict[int, "Entity"]) -> None | Entity:
+def get_nearest_entity(coords: Tuple[float, float], entities: Dict[int, "Entity"]) -> Union[None, "Entity"]:
     nearest_entity = None
     nearest_distance = float("inf")
 

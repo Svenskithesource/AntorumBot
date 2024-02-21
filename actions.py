@@ -35,7 +35,7 @@ class Action:
 
     async def run_wrapper(self):
         try:
-            await self._run()
+            return await self._run()
         except Exception as e:
             traceback.print_exception(
                 type(e), e, e.__traceback__
@@ -179,18 +179,16 @@ class SellInventory(Action):
 
         self.is_moving = False
 
-        self.client.send(packets.Interact(barter.network_id, InteractionType.BARTER))
+        barter.barter()
 
-        logging.info(f"Attempting to barter with entity {barter.network_id}")
+        logging.info(f"Attempting to barter with {barter.name} ({barter.network_id})")
 
         success = await wait_for(
-            lambda: is_nearby(get_future_position_from_entity(self.client.game.network_id, self.client.game),
-                              self.client.game.entities[barter.network_id].states[
-                                  StateType.TRANSFORM].state.position, 5), 5)
+            lambda: barter.is_nearby(get_future_position_from_entity(self.client.game.network_id, self.client.game)), 5)
 
         if not success:
             logging.warning(
-                f"Failed to trigger barter on entity {barter.states[StateType.INFO].state.name} ({barter.network_id}) after 5 seconds")
+                f"Failed to trigger barter on entity {barter.name} ({barter.network_id}) after 5 seconds")
             return False
 
         travel_time = time_to_dest(self.client.game.local_player.position,
@@ -230,7 +228,7 @@ class SellInventory(Action):
         barters = {}
 
         for entity in entities.values():
-            if InteractionType.BARTER in entity.states[StateType.INTERACTABLE].state.interactions:
+            if entity.can_barter():
                 barters[entity.network_id] = entity
 
         return get_nearest_entity(self.client.game.local_player.position, barters)
