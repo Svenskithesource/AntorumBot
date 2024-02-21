@@ -25,6 +25,7 @@ async def main():
     await asyncio.sleep(1)
     print(client.game.local_player)
     print(client.game.local_player.inventory)
+    print(client.game.resources)
 
     forage = actions.ForageWeeds(client)
     await forage.run()

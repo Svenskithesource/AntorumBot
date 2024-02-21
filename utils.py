@@ -285,3 +285,12 @@ def amount_of_resource_in_inventory(resource_id: int, inventory: Dict[int, "Inve
             total += item.amount
 
     return total
+
+
+def has_sufficient_level(levels: Dict[int, List[str]], level: int, item: str):
+    for l in levels.keys():
+        if l <= level:
+            if item in levels[l]:
+                return True
+        else:
+            return False
