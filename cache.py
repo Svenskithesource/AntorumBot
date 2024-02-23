@@ -1,8 +1,11 @@
+import os
+
 from packets.item import ItemResource
 from utils import BufferReader
 from os import path
 
-PATH = path.expandvars(r"%userprofile%\AppData\LocalLow\ratwizard\Antorum")
+PATH = path.expandvars(r"%userprofile%\AppData\LocalLow\ratwizard\Antorum") if os.name == "nt" else path.expanduser(
+    "antorum_data")
 
 
 def get_resources():
