@@ -44,7 +44,7 @@ def handle(packet: Response, client: "multiplayer.Client"):
 
     fake_entity_state = EntityState.__new__(EntityState)  # TODO: This is a hack, fix it
     fake_entity_state.state_id = 2
-    fake_entity_state.state = MovementState(packet.moves, entity.states[StateType.MOVEMENT].state.is_moving,
+    fake_entity_state.state = MovementState(packet.moves, entity.is_moving,
                                             entity.states[StateType.MOVEMENT].state.speed)
 
     update_entity(packet.network_id, {StateType.MOVEMENT: fake_entity_state}, client)

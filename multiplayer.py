@@ -31,6 +31,7 @@ class Client:
         return self._loaded == 3
 
     async def connect(self):
+        asyncio.create_task(self.update())
         logging.info(f"Connecting to {self.host}:{self.port}")
         self.reader, self.writer = await asyncio.open_connection(self.host, self.port)
         logging.info("Connected!")

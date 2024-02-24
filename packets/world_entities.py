@@ -1,3 +1,4 @@
+import asyncio
 import enum
 import logging
 from dataclasses import dataclass
@@ -14,7 +15,7 @@ from packets.interact import Packet as Interact
 
 from packets.item import ItemSlot
 
-from utils import BufferReader, get_entity_from_player_id, StateType, is_nearby, distance_to_entity
+from utils import BufferReader, get_entity_from_player_id, StateType, is_nearby, distance_to_entity, emulate_move
 
 packet_id = 29
 
@@ -295,6 +296,22 @@ class Entity:
     def distance_to(self, position: Tuple[float, float]):
         return distance_to_entity(position, self)
 
+    def start_moving(self):
+        if not self.is_moving:
+            self.states[StateType.MOVEMENT].state.is_moving = True
+
+            if self.network_id == self._client.game.local_player.network_id:
+                asyncio.create_task(emulate_move(self._client.game.local_player.position,
+                                                 self.states[StateType.MOVEMENT].state.destinations,
+                                                 self.states[StateType.MOVEMENT].state.speed, self._client))
+
+    def stop_moving(self):
+        self.states[StateType.MOVEMENT].state.is_moving = False
+
+    @property
+    def is_moving(self):
+        return self.states.get(StateType.MOVEMENT) and self.states[StateType.MOVEMENT].state.is_moving
+
     def __repr__(self):
         return f"Entity({self.network_id}, {self.states})"
 
@@ -333,6 +350,12 @@ def update_entity(network_id: int, states: Dict[StateType, EntityState], client:
         for state in states.values():
             client.game.entities[network_id].states[StateType(state.state_id)] = state
 
+    if states.get(StateType.TRANSFORM):
+        client.game.entities[network_id].stop_moving()
+
+    if states.get(StateType.MOVEMENT):
+        client.game.entities[network_id].start_moving()
+
     if network_id == client.game.local_player.network_id:
         update_player(states, client)
 
@@ -369,14 +392,6 @@ def handle(packet: Response, client: "multiplayer.Client"):
 
         client.game = Game(client.player_id, network_id)
         client._loaded += 1
-
-    logging.debug(f"Received {len(packet.entities)} entities, at coords {packet.coords}")
-    logging.debug(f"Removed {len(packet.removed_entities)} entities")
-    logging.debug(f"Full sync: {packet.full_sync}")
-    for entity in packet.entities:
-        logging.debug(f"Entity {entity.network_id} with {len(entity.states)} states")
-        for state in entity.states.values():
-            logging.debug(f"State: {state.state}")
 
     update_entities(packet.entities, packet.full_sync, packet.removed_entities, client)
 

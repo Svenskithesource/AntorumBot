@@ -2,6 +2,7 @@ import asyncio
 import base64
 import datetime
 import enum
+import logging
 from typing import Literal, List, TYPE_CHECKING, Dict, Tuple, Union
 import struct
 
@@ -211,14 +212,17 @@ def get_nearest_safe_entity(coords: Tuple[float, float], requested_entities: Dic
     return nearest_entity
 
 
-def time_to_dest(start_coords: Tuple[float, float], destinations: List[Tuple[float, float]], speed: float):
+def time_to_dest(start_coords: Tuple[float, float], dest_coords: Tuple[float, float], speed: float):
+    return ((dest_coords[0] - start_coords[0]) ** 2 + (dest_coords[1] - start_coords[1]) ** 2) ** 0.5 / speed
+
+
+def time_to_dests(start_coords: Tuple[float, float], destinations: List[Tuple[float, float]], speed: float):
     if not destinations:
         return 0
 
     time = 0
     for i in range(len(destinations) - 1):
-        time += ((destinations[i][0] - destinations[i + 1][0]) ** 2 +
-                 (destinations[i][1] - destinations[i + 1][1]) ** 2) ** 0.5 / speed
+        time += time_to_dest(destinations[i], destinations[i + 1], speed)
 
     time += ((destinations[0][0] - start_coords[0]) ** 2 + (destinations[0][1] - start_coords[1]) ** 2) ** 0.5 / speed
     return time
@@ -294,3 +298,37 @@ def has_sufficient_level(levels: Dict[int, List[str]], level: int, item: str):
                 return True
         else:
             return False
+
+
+async def emulate_move(start_coords: Tuple[float, float], destinations: List[Tuple[float, float]], speed: float,
+                       client: "multiplayer.Client"):
+    time_to_next = time_to_dest(start_coords, destinations[0], speed)
+    begin_coords = start_coords
+    end_coords = destinations[0]
+
+    for i in range(len(destinations)):
+        time_left = time_to_next
+        while time_left > 0:
+            await asyncio.sleep(1)
+
+            if not client.game.entities[client.game.local_player.network_id].is_moving:
+                return
+
+            time_left -= 1
+
+            client.game.local_player.position = (
+                start_coords[0] + (end_coords[0] - begin_coords[0]) * (1 - time_left / time_to_next),
+                begin_coords[1] + (end_coords[1] - begin_coords[1]) * (1 - time_left / time_to_next)
+            )
+
+            logging.debug(f"Emulated move to {client.game.local_player.position}")
+
+        if i + 1 >= len(destinations) - 1:
+            break
+
+        time_to_next = time_to_dest(destinations[i], destinations[i + 1], speed)
+        start_coords = destinations[i]
+        end_coords = destinations[i + 1]
+
+    client.game.local_player.position = destinations[-1]
+    client.game.entities[client.game.local_player.network_id].stop_moving()

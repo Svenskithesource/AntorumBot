@@ -12,7 +12,7 @@ from packets.barter_open import BarterInventoryItemArea
 from packets.world_entities import Entity
 from player import SkillType
 from utils import StateType, get_future_position_from_entity, message_contains_since, map_to_game_coords, is_nearby, \
-    get_nearest_entity, time_to_dest, coords_in_bounds, inventory_contains_resource_id, wait_for, get_resource_by_name, \
+    get_nearest_entity, time_to_dests, coords_in_bounds, inventory_contains_resource_id, wait_for, get_resource_by_name, \
     get_inventory_slot_by_resource_id, amount_of_resource_in_inventory, has_sufficient_level
 
 
@@ -82,8 +82,8 @@ class ForageWeeds(Action):
 
         movement = self.client.game.entities[self.client.game.network_id].states[StateType.MOVEMENT].state
         start_time = datetime.datetime.now()
-        travel_time = time_to_dest(self.client.game.local_player.position, movement.destinations,
-                                   movement.speed) + 10  # 10 seconds for good measure
+        travel_time = time_to_dests(self.client.game.local_player.position, movement.destinations,
+                                    movement.speed) + 10  # 10 seconds for good measure
         self.last_weed_id = weed.network_id
 
         logging.debug(f"Travel time to forage: {travel_time} seconds")
@@ -128,8 +128,8 @@ class ForageWeeds(Action):
                     return False
 
                 movement = self.client.game.entities[self.client.game.network_id].states[StateType.MOVEMENT].state
-                travel_time = time_to_dest(self.client.game.local_player.position, movement.destinations,
-                                           movement.speed)
+                travel_time = time_to_dests(self.client.game.local_player.position, movement.destinations,
+                                            movement.speed)
 
                 success = await wait_for(
                     lambda: coords_in_bounds(self.client.game.local_player.position, self.forage_coords[:2]),
@@ -232,10 +232,10 @@ class SellInventory(Action):
                 f"Failed to trigger barter on entity {barter.name} ({barter.network_id}) after 5 seconds")
             return False
 
-        travel_time = time_to_dest(self.client.game.local_player.position,
-                                   self.client.game.entities[barter.network_id].states[
+        travel_time = time_to_dests(self.client.game.local_player.position,
+                                    self.client.game.entities[barter.network_id].states[
                                        StateType.MOVEMENT].state.destinations,
-                                   self.client.game.entities[self.client.game.network_id].states[
+                                    self.client.game.entities[self.client.game.network_id].states[
                                        StateType.MOVEMENT].state.speed) + 10
 
         success = await wait_for(lambda: self.client.game.barter, travel_time)
