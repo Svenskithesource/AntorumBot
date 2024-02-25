@@ -1,10 +1,8 @@
-import multiplayer
+from antorum import multiplayer, actions
 import asyncio
 import logging
 
 import secrets
-
-import actions
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", datefmt='%Y-%m-%d %H:%M:%S')
 
@@ -12,7 +10,6 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 async def main():
     client = multiplayer.Client()
 
-    asyncio.create_task(client.update())
     await client.connect()
 
     await client.login(secrets.USERNAME, secrets.PASSWORD)
