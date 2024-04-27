@@ -4,7 +4,7 @@ Antorum Bot is a package that allows you to create a bot for the game [Antorum](
 It is made by reverse engineering the game's network activity and is not officially supported by the game's developers.
 
 ## Usage
-To use the bot, you need to install the package and create a new bot instance.
+To use the bot, you need to install the package (`pip install antorum`) and create a new bot instance.
 
 ```python
 from antorum import multiplayer
@@ -88,6 +88,9 @@ class FollowPlayer(Action):
 ```
 
 As you can see it's quite simple to create your own actions. There are a few helper functions in the `utils` module that can help you with making your own actions.
+
+## Docs
+Docs can be found [here](https://antorum.readthedocs.io/)
 
 ## Logging
 The bot uses the `logging` module to log information. You can configure the logger to log to a file or change the log level.
