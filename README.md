@@ -122,6 +122,6 @@ Please report any bugs using the in-game bug reporting tool (Accessed via the F5
 ```
 
 ## Contributing
-As of now we don't support all packet types that the game has.
+As of now, we do not support all packet types that the game has.
 You can add one by creating a new file in the `packets` directory and subclassing `Packet`. I recommend looking at the different packet types in the game's source code to see how they work.
-It will automatically be detected by the bot and used when the game sends that packet type.
+This new packet type will automatically be detected by the bot and used when the game sends that packet type.
